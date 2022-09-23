@@ -15,7 +15,7 @@ let uid = 0
 export function initMixin (Vue: Class<Component>) {
   Vue.prototype._init = function (options?: Object) {
     const vm: Component = this
-    // a uid
+    // 自增的uid
     vm._uid = uid++
 
     let startTag, endTag
@@ -26,15 +26,15 @@ export function initMixin (Vue: Class<Component>) {
       mark(startTag)
     }
 
-    // a flag to avoid this being observed
+    // 标记为Vue组件，标记后不会被观察
     vm._isVue = true
-    // merge options
-    if (options && options._isComponent) {
+    // 选项规范化和选项合并
+    if (options && options._isComponent) { // 组件实例
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
       initInternalComponent(vm, options)
-    } else {
+    } else { // 应用实例
       vm.$options = mergeOptions(
         resolveConstructorOptions(vm.constructor),
         options || {},
@@ -49,12 +49,19 @@ export function initMixin (Vue: Class<Component>) {
     }
     // expose real self
     vm._self = vm
+    //初始化$parent和$children并绑定父子关系，初始化$refs,$root,_watcher,_inactive,_isMounted,_isDestroyed,_isBeingDestroyed,_directInactive等属性
     initLifecycle(vm)
+    //初始化_events,_hasHookEvent等属性，更新$options._parentListeners
     initEvents(vm)
+    // 初始化_vnode,$vnode,$slots,$scopeSlots,$createElement,_c以及响应式的$listeners,$attrs等属性
     initRender(vm)
-    callHook(vm, 'beforeCreate')
+    // 执行beforeCreate钩子
+    callHook(vm, 'beforeCreate') 
+    // 在data和props前处理inject，会逐级遍历父元素获取对应inject并注入，inject是响应式的，但是不可被修改
     initInjections(vm) // resolve injections before data/props
+    // 依次处理props、methods、data、computed、watch
     initState(vm)
+    // 处理provide，可以为函数，可以为对象
     initProvide(vm) // resolve provide after data/props
     callHook(vm, 'created')
 

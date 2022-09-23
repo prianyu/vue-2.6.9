@@ -17,24 +17,27 @@ import VNode, { createEmptyVNode } from '../vdom/vnode'
 import { isUpdatingChildComponent } from './lifecycle'
 
 export function initRender (vm: Component) {
-  vm._vnode = null // the root of the child tree
+  vm._vnode = null // 子树的根节点
   vm._staticTrees = null // v-once cached trees
   const options = vm.$options
-  const parentVnode = vm.$vnode = options._parentVnode // the placeholder node in parent tree
-  const renderContext = parentVnode && parentVnode.context
-  vm.$slots = resolveSlots(options._renderChildren, renderContext)
-  vm.$scopedSlots = emptyObject
+  const parentVnode = vm.$vnode = options._parentVnode // 在父元素中的占位符
+  const renderContext = parentVnode && parentVnode.context // 渲染上下文
+  vm.$slots = resolveSlots(options._renderChildren, renderContext) // 插槽
+  vm.$scopedSlots = emptyObject // 作用域插槽
   // bind the createElement fn to this instance
   // so that we get proper render context inside it.
   // args order: tag, data, children, normalizationType, alwaysNormalize
   // internal version is used by render functions compiled from templates
+  // 将createElement绑定到当前实例，这样在渲染时就可以获得正确的渲染上下文，这个函数给内部模板编译时使用
   vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false)
   // normalization is always applied for the public version, used in
   // user-written render functions.
+  // 这个函数提供给用户自定义的render函数
   vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)
 
   // $attrs & $listeners are exposed for easier HOC creation.
   // they need to be reactive so that HOCs using them are always updated
+  // 响应式的$attrs和$listeners属性
   const parentData = parentVnode && parentVnode.data
 
   /* istanbul ignore else */
