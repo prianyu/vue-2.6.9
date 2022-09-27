@@ -18,8 +18,9 @@ import {
   defineReactive
 } from '../util/index'
 
+// 初始化全局API的函数
 export function initGlobalAPI (Vue: GlobalAPI) {
-  // config
+  // Vue.config全局配置
   const configDef = {}
   configDef.get = () => config
   if (process.env.NODE_ENV !== 'production') {
@@ -34,6 +35,7 @@ export function initGlobalAPI (Vue: GlobalAPI) {
   // exposed util methods.
   // NOTE: these are not considered part of the public API - avoid relying on
   // them unless you are aware of the risk.
+  // Vue向外保留的工具函数，这些函数可能在后续的版本会移除，所以使用时应该注意风险
   Vue.util = {
     warn,
     extend,
@@ -41,16 +43,19 @@ export function initGlobalAPI (Vue: GlobalAPI) {
     defineReactive
   }
 
+  // 全局的API
   Vue.set = set
   Vue.delete = del
   Vue.nextTick = nextTick
 
   // 2.6 explicit observable API
-  Vue.observable = <T>(obj: T): T => {
+  // 响应式数据转化的API
+  Vue.observable = (object) => {
     observe(obj)
     return obj
   }
 
+  // 常见filters,directives,components，用于存放对应的资源类型定义
   Vue.options = Object.create(null)
   ASSET_TYPES.forEach(type => {
     Vue.options[type + 's'] = Object.create(null)
@@ -60,10 +65,11 @@ export function initGlobalAPI (Vue: GlobalAPI) {
   // components with in Weex's multi-instance scenarios.
   Vue.options._base = Vue
 
+  // keepAlive组件
   extend(Vue.options.components, builtInComponents)
 
-  initUse(Vue)
-  initMixin(Vue)
-  initExtend(Vue)
-  initAssetRegisters(Vue)
+  initUse(Vue) // Vue.use
+  initMixin(Vue) // Vue.mixin
+  initExtend(Vue) // Vue.extend
+  initAssetRegisters(Vue) // Vue.directive, Vue.component, Vue.filter
 }

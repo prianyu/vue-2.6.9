@@ -9,6 +9,7 @@ export function resolveSlots (
   children: ?Array<VNode>,
   context: ?Component
 ): { [key: string]: Array<VNode> } {
+  debugger
   if (!children || !children.length) {
     return {}
   }
@@ -22,9 +23,10 @@ export function resolveSlots (
     }
     // named slots should only be respected if the vnode was rendered in the
     // same context.
+    // 命名插槽只有在当vnode出于同一上下文时才考虑处理
     if ((child.context === context || child.fnContext === context) &&
       data && data.slot != null
-    ) {
+    ) {// 命名插槽
       const name = data.slot
       const slot = (slots[name] || (slots[name] = []))
       if (child.tag === 'template') {
@@ -32,11 +34,12 @@ export function resolveSlots (
       } else {
         slot.push(child)
       }
-    } else {
+    } else { // 默认插槽
       (slots.default || (slots.default = [])).push(child)
     }
   }
   // ignore slots that contains only whitespace
+  // 移除空白的插槽
   for (const name in slots) {
     if (slots[name].every(isWhitespace)) {
       delete slots[name]

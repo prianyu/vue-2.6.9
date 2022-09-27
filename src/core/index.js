@@ -6,6 +6,7 @@ import { FunctionalRenderContext } from 'core/vdom/create-functional-component'
 
 /**
 * 初始化全局的API
+· 0. Vue.config全局配置的定义
   1. delete,set,nextTick,observable等静态方法
   2. util静态属性（含warn,extend,mergeOptions,defineReactive等方法）
   3. options静态属性，{directives,options,components,_base: Vue}，components含内置组件keep-alive

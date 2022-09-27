@@ -22,7 +22,7 @@ export function initRender (vm: Component) {
   const options = vm.$options
   const parentVnode = vm.$vnode = options._parentVnode // 在父元素中的占位符
   const renderContext = parentVnode && parentVnode.context // 渲染上下文
-  vm.$slots = resolveSlots(options._renderChildren, renderContext) // 插槽
+  vm.$slots = resolveSlots(options._renderChildren, renderContext) // 插槽处理
   vm.$scopedSlots = emptyObject // 作用域插槽
   // bind the createElement fn to this instance
   // so that we get proper render context inside it.
@@ -73,6 +73,7 @@ export function renderMixin (Vue: Class<Component>) {
     const vm: Component = this
     const { render, _parentVnode } = vm.$options
 
+    // 规范化插槽
     if (_parentVnode) {
       vm.$scopedSlots = normalizeScopedSlots(
         _parentVnode.data.scopedSlots,
@@ -83,6 +84,7 @@ export function renderMixin (Vue: Class<Component>) {
 
     // set parent vnode. this allows render functions to have access
     // to the data on the placeholder node.
+    //提供了一个让render函数访问占位节点的上下文环境
     vm.$vnode = _parentVnode
     // render self
     let vnode
@@ -90,7 +92,9 @@ export function renderMixin (Vue: Class<Component>) {
       // There's no need to maintain a stack becaues all render fns are called
       // separately from one another. Nested component's render fns are called
       // when parent component is patched.
+      // 所有的渲染函数都是单独调用的，当父组件打补丁时，所有的嵌套组件的render都会被重新执行
       currentRenderingInstance = vm
+      // 调用render函数，接收的参数为vm.$createElement函数
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
       handleError(e, vm, `render`)
@@ -115,6 +119,7 @@ export function renderMixin (Vue: Class<Component>) {
       vnode = vnode[0]
     }
     // return empty vnode in case the render function errored out
+    // 多个根节点
     if (!(vnode instanceof VNode)) {
       if (process.env.NODE_ENV !== 'production' && Array.isArray(vnode)) {
         warn(

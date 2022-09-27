@@ -45,6 +45,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 /**
  * Helper that recursively merges two data objects together.
+ * 递归合并data选项，会采用set来设置值
  */
 function mergeData (to: Object, from: ?Object): Object {
   if (!from) return to
@@ -142,6 +143,7 @@ strats.data = function (
 
 /**
  * Hooks and props are merged as arrays.
+ * 生命周期钩子：合并成数组并去重
  */
 function mergeHook (
   parentVal: ?Array<Function>,
@@ -180,6 +182,7 @@ LIFECYCLE_HOOKS.forEach(hook => {
  * a three-way merge between constructor options, instance
  * options and parent options.
  */
+// directives,components,filters：构造函数、实例、父选项进行三方合并
 function mergeAssets (
   parentVal: ?Object,
   childVal: ?Object,
@@ -204,6 +207,7 @@ ASSET_TYPES.forEach(function (type) {
  *
  * Watchers hashes should not overwrite one
  * another, so we merge them as arrays.
+ * watch的选项合并策略为合并为一个数组
  */
 strats.watch = function (
   parentVal: ?Object,
@@ -295,12 +299,14 @@ export function validateComponentName (name: string) {
  * Ensure all props option syntax are normalized into the
  * Object-based format.
  */
+// props规范化
 function normalizeProps (options: Object, vm: ?Component) {
   const props = options.props
   if (!props) return
   const res = {}
   let i, val, name
   if (Array.isArray(props)) {
+    //['a', 'b']格式转为{ a: {type: null}, b: {type: null}}
     i = props.length
     while (i--) {
       val = props[i]
@@ -312,6 +318,7 @@ function normalizeProps (options: Object, vm: ?Component) {
       }
     }
   } else if (isPlainObject(props)) {
+    // {a: {type: String}, b: String}转为{a: {type: String}, b: {type: String}}
     for (const key in props) {
       val = props[key]
       name = camelize(key)
@@ -332,15 +339,19 @@ function normalizeProps (options: Object, vm: ?Component) {
 /**
  * Normalize all injections into Object-based format
  */
+// inject规范化
 function normalizeInject (options: Object, vm: ?Component) {
   const inject = options.inject
   if (!inject) return
   const normalized = options.inject = {}
   if (Array.isArray(inject)) {
+    // ['age', 'name']转为{age: {from: 'age'}, name: {from: 'name'}}
     for (let i = 0; i < inject.length; i++) {
       normalized[inject[i]] = { from: inject[i] }
     }
   } else if (isPlainObject(inject)) {
+    // {age: 'age', name: {from: 'myname', default: 'test'}, gender: {default: 'female'}}转为
+    // {age: {from: 'age'}, name: {from: 'myname', default: 'test'}, gender: {from: 'gender', default: 'female'}}
     for (const key in inject) {
       const val = inject[key]
       normalized[key] = isPlainObject(val)
@@ -359,6 +370,8 @@ function normalizeInject (options: Object, vm: ?Component) {
 /**
  * Normalize raw function directives into object format.
  */
+// directive规范化
+//对于函数形式（标记为def）的directive转为{bind: def, update: def}的格式
 function normalizeDirectives (options: Object) {
   const dirs = options.directives
   if (dirs) {
@@ -398,14 +411,15 @@ export function mergeOptions (
     child = child.options
   }
 
-  normalizeProps(child, vm)
-  normalizeInject(child, vm)
-  normalizeDirectives(child)
+  normalizeProps(child, vm) // props规范化
+  normalizeInject(child, vm) // inject规范化
+  normalizeDirectives(child) // directive规范化
 
   // Apply extends and mixins on the child options,
   // but only if it is a raw options object that isn't
   // the result of another mergeOptions call.
   // Only merged options has the _base property.
+  // 合并extends和mixins
   if (!child._base) {
     if (child.extends) {
       parent = mergeOptions(parent, child.extends, vm)
