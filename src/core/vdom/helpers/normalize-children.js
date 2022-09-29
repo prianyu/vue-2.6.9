@@ -15,6 +15,15 @@ import { isFalse, isTrue, isDef, isUndef, isPrimitive } from 'shared/util'
 // normalization is needed - if any child is an Array, we flatten the whole
 // thing with Array.prototype.concat. It is guaranteed to be only 1-level deep
 // because functional components already normalize their own children.
+// 模板编译器试图通过在编译时静态分析模板来最小化规范化的需要。对于纯HTML标签，是完全可以跳过规范化的，因为render函数会
+// 保证返回一个由VNode组成的数组。
+
+// 有两种情况是需要额外的规范化的
+// 1. 当子组件包含了组件的时候，由于函数式组件时可以返回一个数组的而不是返回一个独立的根节点，在这种情况下，
+// 由于函数式组件本身已经对自己的子组件做了规范化的处理，所以只需要做一下简单的规范化就可以了，
+//通过Array.prototyp.concat对数组做扁平化处理，保证只有一级的深度。
+
+// 简单规范化：对子组件做扁平化处理
 export function simpleNormalizeChildren (children: any) {
   for (let i = 0; i < children.length; i++) {
     if (Array.isArray(children[i])) {
@@ -28,9 +37,12 @@ export function simpleNormalizeChildren (children: any) {
 // e.g. <template>, <slot>, v-for, or when the children is provided by user
 // with hand-written render functions / JSX. In such cases a full normalization
 // is needed to cater to all possible types of children values.
+// 2. 当render是用户手写的时候，children是可以为简单的文本节点的，此时children不是一个数组
+// 这种情况下需要创建一个位版本节VNode，并转为数组的格式；
+// 当编译的是slot、v-for、template时会产生嵌套数组的情况，这种情况就调用nolmalizeArrayChildren来规范化
 export function normalizeChildren (children: any): ?Array<VNode> {
   return isPrimitive(children)
-    ? [createTextVNode(children)]
+    ? [createTextVNode(children)] // 文本字符串，转为VNode文本节点
     : Array.isArray(children)
       ? normalizeArrayChildren(children)
       : undefined

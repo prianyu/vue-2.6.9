@@ -87,7 +87,7 @@ export function initExtend (Vue: GlobalAPI) {
     // keep a reference to the super options at extension time.
     // later at instantiation we can check if Super's options have
     // been updated.
-    // 应用基类构造器选项和当前的构造器选项，后续实例化做选项合并时可以获取并检测其是否已经改变
+    // 引用基类构造器选项和当前的构造器选项，后续实例化做选项合并时可以获取并检测其是否已经改变
     // 如果已经改变了则需要重新合并选项
     Sub.superOptions = Super.options
     Sub.extendOptions = extendOptions // 定义构造函数时的构造器选项 

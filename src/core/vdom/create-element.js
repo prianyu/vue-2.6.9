@@ -20,18 +20,20 @@ import {
   simpleNormalizeChildren
 } from './helpers/index'
 
-const SIMPLE_NORMALIZE = 1
-const ALWAYS_NORMALIZE = 2
+// 用于children的规范化
+const SIMPLE_NORMALIZE = 1 // 简单类型的规范化，针对的是编译阶段生成的render函数
+const ALWAYS_NORMALIZE = 2 // 针对的是用户自定义的render函数
 
 // wrapper function for providing a more flexible interface
 // without getting yelled at by flow
+// 该函数是对_createElement的包装
 export function createElement (
-  context: Component,
-  tag: any,
-  data: any,
-  children: any,
-  normalizationType: any,
-  alwaysNormalize: boolean
+  context: Component, // 在对外提供时，会绑定上下文
+  tag: any, // 创建的节点名，可以是标签、组件或者一个resolve了标签或组件的async函数
+  data: any, // 与模板中attribute对应的数据对象，是可选的
+  children: any, // 子级的VNodes,也是有createELement创建的，也可以是单纯的字符串代表文本节点
+  normalizationType: any, // 子节点规范化的类型
+  alwaysNormalize: boolean // 是否规范话，这个参数在对外的render中一致设置为true，在内部的编译生成的render中设置为false
 ): VNode | Array<VNode> {
   if (Array.isArray(data) || isPrimitive(data)) {
     normalizationType = children
@@ -60,10 +62,11 @@ export function _createElement (
     return createEmptyVNode()
   }
   // object syntax in v-bind
+  // 针对有is属性的组件处理
   if (isDef(data) && isDef(data.is)) {
     tag = data.is
   }
-  if (!tag) {
+  if (!tag) { // 空白的tag，创建并返回空节点
     // in case of component :is set to falsy value
     return createEmptyVNode()
   }
@@ -87,9 +90,9 @@ export function _createElement (
     data.scopedSlots = { default: children[0] }
     children.length = 0
   }
-  if (normalizationType === ALWAYS_NORMALIZE) {
+  if (normalizationType === ALWAYS_NORMALIZE) { // 用户自定义的render中的，children规范化
     children = normalizeChildren(children)
-  } else if (normalizationType === SIMPLE_NORMALIZE) {
+  } else if (normalizationType === SIMPLE_NORMALIZE) { // 编译生成的render中的children规范化
     children = simpleNormalizeChildren(children)
   }
   let vnode, ns

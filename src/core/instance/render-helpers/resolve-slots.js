@@ -9,7 +9,6 @@ export function resolveSlots (
   children: ?Array<VNode>,
   context: ?Component
 ): { [key: string]: Array<VNode> } {
-  debugger
   if (!children || !children.length) {
     return {}
   }

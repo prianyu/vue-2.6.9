@@ -73,3 +73,6 @@ export function initGlobalAPI (Vue: GlobalAPI) {
   initExtend(Vue) // Vue.extend
   initAssetRegisters(Vue) // Vue.directive, Vue.component, Vue.filter
 }
+
+
+
