@@ -26,16 +26,17 @@ const ALWAYS_NORMALIZE = 2 // 针对的是用户自定义的render函数
 
 // wrapper function for providing a more flexible interface
 // without getting yelled at by flow
-// 该函数是对_createElement的包装
+// 该函数是对_createElement的包装，主要是做了一些参数的规范化
 export function createElement (
   context: Component, // 在对外提供时，会绑定上下文
   tag: any, // 创建的节点名，可以是标签、组件或者一个resolve了标签或组件的async函数
   data: any, // 与模板中attribute对应的数据对象，是可选的
-  children: any, // 子级的VNodes,也是有createELement创建的，也可以是单纯的字符串代表文本节点
+  children: any, // 子级的VNodes,也是由createELement创建的，也可以是单纯的字符串代表文本节点
   normalizationType: any, // 子节点规范化的类型
-  alwaysNormalize: boolean // 是否规范话，这个参数在对外的render中一致设置为true，在内部的编译生成的render中设置为false
+  alwaysNormalize: boolean // 是否为ALWAYS_NORMALIZE规范化类型，这个参数在用户手写的render中设置为true，在内部的编译生成的render中设置为false
 ): VNode | Array<VNode> {
-  if (Array.isArray(data) || isPrimitive(data)) {
+  // data是可选的，当data传的是数组或者普通类型时，将其当作子元素来处理(比如插槽和文本)
+  if (Array.isArray(data) || isPrimitive(data)) { 
     normalizationType = children
     children = data
     data = undefined
@@ -46,6 +47,7 @@ export function createElement (
   return _createElement(context, tag, data, children, normalizationType)
 }
 
+// 核心的创建元素的函数
 export function _createElement (
   context: Component,
   tag?: string | Class<Component> | Function | Object,
@@ -62,7 +64,7 @@ export function _createElement (
     return createEmptyVNode()
   }
   // object syntax in v-bind
-  // 针对有is属性的组件处理
+  // 针对有is属性的组件处理，如tr标签的is属性等
   if (isDef(data) && isDef(data.is)) {
     tag = data.is
   }
@@ -83,6 +85,7 @@ export function _createElement (
     }
   }
   // support single function children as default scoped slot
+  // @suspense
   if (Array.isArray(children) &&
     typeof children[0] === 'function'
   ) {
@@ -99,19 +102,22 @@ export function _createElement (
   if (typeof tag === 'string') {
     let Ctor
     ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag)
-    if (config.isReservedTag(tag)) {
+    if (config.isReservedTag(tag)) { // 内置组件
       // platform built-in elements
       vnode = new VNode(
         config.parsePlatformTagName(tag), data, children,
         undefined, undefined, context
       )
     } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
+      // 组件且已经定义了组件，则创建组件VNode
       // component
       vnode = createComponent(Ctor, data, context, children, tag)
     } else {
       // unknown or unlisted namespaced elements
       // check at runtime because it may get assigned a namespace when its
       // parent normalizes children
+      // 未知的或者未列出命名空间的元素
+      // 运行时检查，因为父级规范化子级时可能会为其分配命名空间
       vnode = new VNode(
         tag, data, children,
         undefined, undefined, context
@@ -121,6 +127,7 @@ export function _createElement (
     // direct component options / constructor
     vnode = createComponent(tag, data, context, children)
   }
+  // 返回生成的vnode
   if (Array.isArray(vnode)) {
     return vnode
   } else if (isDef(vnode)) {

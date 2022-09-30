@@ -9,6 +9,8 @@ import {
   formatComponentName
 } from 'core/util/index'
 
+
+// 提取父组件传给子组件的props值
 export function extractPropsFromVNodeData (
   data: VNodeData,
   Ctor: Class<Component>,
@@ -17,7 +19,9 @@ export function extractPropsFromVNodeData (
   // we are only extracting raw values here.
   // validation and default values are handled in the child
   // component itself.
-  const propOptions = Ctor.options.props
+  // 该函数仅仅提取了原始值，对于值的校验和默认值等是在组件初始化时处理的
+
+  const propOptions = Ctor.options.props // 规范化后的props对象
   if (isUndef(propOptions)) {
     return
   }
@@ -25,7 +29,7 @@ export function extractPropsFromVNodeData (
   const { attrs, props } = data
   if (isDef(attrs) || isDef(props)) {
     for (const key in propOptions) {
-      const altKey = hyphenate(key)
+      const altKey = hyphenate(key) // 属性名驼峰转连接符
       if (process.env.NODE_ENV !== 'production') {
         const keyInLowerCase = key.toLowerCase()
         if (
@@ -42,6 +46,7 @@ export function extractPropsFromVNodeData (
           )
         }
       }
+      // 优先从props获取对应的属性，再从attrs里获取，对于attrs，在操作后对应的属性会被删除
       checkProp(res, props, key, altKey, true) ||
       checkProp(res, attrs, key, altKey, false)
     }
@@ -57,13 +62,13 @@ function checkProp (
   preserve: boolean
 ): boolean {
   if (isDef(hash)) {
-    if (hasOwn(hash, key)) {
+    if (hasOwn(hash, key)) { 
       res[key] = hash[key]
       if (!preserve) {
         delete hash[key]
       }
       return true
-    } else if (hasOwn(hash, altKey)) {
+    } else if (hasOwn(hash, altKey)) { 
       res[key] = hash[altKey]
       if (!preserve) {
         delete hash[altKey]

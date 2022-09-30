@@ -230,6 +230,7 @@ export function createPatchFunction (backend) {
     if (isDef(i)) {
       const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
       // 如果当前vnode是一个组件，则调用组件init钩子
+      // init的钩子是在调用createElement生成vnode时，调用installComponentHooks合并钩子时得到的
       if (isDef(i = i.hook) && isDef(i = i.init)) {
         i(vnode, false /* hydrating */)
       }

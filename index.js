@@ -37,3 +37,4 @@ const app = new Vue({
   
 })
 app.$mount("#app")
+console.log(app)

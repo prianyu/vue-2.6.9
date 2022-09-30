@@ -18,7 +18,7 @@ import {
   invokeWithErrorHandling
 } from '../util/index'
 
-export let activeInstance: any = null
+export let activeInstance: any = null // 激活的实例
 export let isUpdatingChildComponent: boolean = false
 
 export function setActiveInstance(vm: Component) {
@@ -232,6 +232,7 @@ export function mountComponent (
   return vm
 }
 
+// 更新子组件
 export function updateChildComponent (
   vm: Component,
   propsData: ?Object,
