@@ -18,12 +18,20 @@ import {
   invokeWithErrorHandling
 } from '../util/index'
 
+// 整个初始化是一个深度遍历的过程。在实例化子组件的时候，它需要知道当前上下文的Vue实例是什么，并把它作为子组件的父Vue实例
+// 在调用_update的过程中，调用__patch__前会将将activeInstance先保存在prevActiveInstance中，并将当前实例vm赋给activeInstance
+// 执行完__patch__后再恢复activeInstance为prevActiveInstance
+// 当一个vm实例完成了它的所有的子树的patch或者update过程后，activeInstance会回到它的父实例，这样就保证了深度遍历过程中，
+// 在实例化子组件时能传入当前子组件的父Vue实例
 export let activeInstance: any = null // 激活的实例
 export let isUpdatingChildComponent: boolean = false
 
+
+// 切换当前激活的实例
 export function setActiveInstance(vm: Component) {
-  const prevActiveInstance = activeInstance
-  activeInstance = vm
+  const prevActiveInstance = activeInstance // 缓存上一个activeInstance
+  activeInstance = vm // 当前激活的实例
+  // 返回一个恢复上一个激活实例的函数
   return () => {
     activeInstance = prevActiveInstance
   }
@@ -57,23 +65,29 @@ export function initLifecycle (vm: Component) {
   vm._isBeingDestroyed = false // 标记组件是否出于正在销毁的阶段
 }
 
+// 添加_update方法
 export function lifecycleMixin (Vue: Class<Component>) {
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
     const prevEl = vm.$el // 实例挂载元素
     const prevVnode = vm._vnode // 上一次的虚拟节点_vnode
-    const restoreActiveInstance = setActiveInstance(vm) //激活实例
-    vm._vnode = vnode // 更新vnode
+    const restoreActiveInstance = setActiveInstance(vm) //切换当前激活的实例
+    vm._vnode = vnode // 有render函数生成的准备更新渲染的vnode
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
+    debugger
     if (!prevVnode) {// 初次渲染节点，对比$el与vnode
       // initial render
+      // hydrating:false表示非服务端渲染, removeOnly是给transition-group用的
+      // 此处会对$el重新赋值，也就是对$el会有一次替换的过程
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
     } else { // 更新节点，则比对前后两次虚拟节点
       // updates
       vm.$el = vm.__patch__(prevVnode, vnode)
     }
-    restoreActiveInstance()
+
+    restoreActiveInstance() //  __patch__完成后恢复到上一次激活的实例（父实例）
+
     // update __vue__ reference
     if (prevEl) { // 移除旧元素的__vue__引用
       prevEl.__vue__ = null
@@ -241,7 +255,7 @@ export function updateChildComponent (
   renderChildren: ?Array<VNode>
 ) {
   if (process.env.NODE_ENV !== 'production') {
-    isUpdatingChildComponent = true
+    isUpdatingChildComponent = true // 标记为正在更新子组件，用于判断props不能被直接修改的提醒
   }
 
   // determine whether component has slot children
@@ -282,6 +296,7 @@ export function updateChildComponent (
   vm.$listeners = listeners || emptyObject
 
   // update props
+  // 重新验和计算新的props
   if (propsData && vm.$options.props) {
     toggleObserving(false)
     const props = vm._props

@@ -3,11 +3,13 @@
 import { inBrowser } from 'core/util/env'
 import { makeMap } from 'shared/util'
 
+// svg和math标签的命名空间
 export const namespaceMap = {
   svg: 'http://www.w3.org/2000/svg',
   math: 'http://www.w3.org/1998/Math/MathML'
 }
 
+// 判断是否为html相关白哦前
 export const isHTMLTag = makeMap(
   'html,body,base,head,link,meta,style,title,' +
   'address,article,aside,footer,header,h1,h2,h3,h4,h5,h6,hgroup,nav,section,' +
@@ -24,6 +26,7 @@ export const isHTMLTag = makeMap(
 
 // this map is intentionally selective, only covering SVG elements that may
 // contain child elements.
+// 判断是否为svg相关标签
 export const isSVG = makeMap(
   'svg,animate,circle,clippath,cursor,defs,desc,ellipse,filter,font-face,' +
   'foreignObject,g,glyph,image,line,marker,mask,missing-glyph,path,pattern,' +
@@ -33,10 +36,12 @@ export const isSVG = makeMap(
 
 export const isPreTag = (tag: ?string): boolean => tag === 'pre'
 
+// 检测是否为保留标签，有html和svg相关的标签
 export const isReservedTag = (tag: string): ?boolean => {
   return isHTMLTag(tag) || isSVG(tag)
 }
 
+// 获取命名空间，支持svg和math相关标签，分别返回svg和math
 export function getTagNamespace (tag: string): ?string {
   if (isSVG(tag)) {
     return 'svg'
@@ -48,7 +53,10 @@ export function getTagNamespace (tag: string): ?string {
   }
 }
 
-const unknownElementCache = Object.create(null)
+
+// 获取是否为无效的html标签
+// 除html和svg外会尝试创建元素后判断是否为无效的元素
+const unknownElementCache = Object.create(null) // 缓存，避免重复判断用的
 export function isUnknownElement (tag: string): boolean {
   /* istanbul ignore if */
   if (!inBrowser) {
@@ -74,4 +82,5 @@ export function isUnknownElement (tag: string): boolean {
   }
 }
 
+// 检测是否为合法的input标签的类型
 export const isTextInputType = makeMap('text,number,password,search,email,tel,url')

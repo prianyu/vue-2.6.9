@@ -35,6 +35,7 @@ export function createElement (
   normalizationType: any, // 子节点规范化的类型
   alwaysNormalize: boolean // 是否为ALWAYS_NORMALIZE规范化类型，这个参数在用户手写的render中设置为true，在内部的编译生成的render中设置为false
 ): VNode | Array<VNode> {
+  // 参数重载
   // data是可选的，当data传的是数组或者普通类型时，将其当作子元素来处理(比如插槽和文本)
   if (Array.isArray(data) || isPrimitive(data)) { 
     normalizationType = children
@@ -102,14 +103,14 @@ export function _createElement (
   if (typeof tag === 'string') {
     let Ctor
     ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag)
-    if (config.isReservedTag(tag)) { // 内置组件
+    if (config.isReservedTag(tag)) { // 原生HTML标签
       // platform built-in elements
       vnode = new VNode(
         config.parsePlatformTagName(tag), data, children,
         undefined, undefined, context
       )
     } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
-      // 组件且已经定义了组件，则创建组件VNode
+      // 已经注册了的组件，则创建组件VNode
       // component
       vnode = createComponent(Ctor, data, context, children, tag)
     } else {
@@ -123,7 +124,7 @@ export function _createElement (
         undefined, undefined, context
       )
     }
-  } else {
+  } else { // 组件构造器或者组件选项
     // direct component options / constructor
     vnode = createComponent(tag, data, context, children)
   }

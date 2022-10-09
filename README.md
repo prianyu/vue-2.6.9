@@ -258,6 +258,8 @@ src
 + 调用render函数生成虚拟DOM，接收的参数为vm.$createElement函数，将虚拟DOM结果赋值给vnode（渲染失败会返回vm._vnode）
 + vnode.parent = _parentNode，绑定父子关系
 + 返回最终的vnode
+  
+> _render过程中添加的vm.$vnode与_update过程中添加的vm._vnode是父子关系，vm._vnode.parent = vm.$vnode
 
 
 

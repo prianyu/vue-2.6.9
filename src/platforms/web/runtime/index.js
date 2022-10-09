@@ -20,10 +20,10 @@ import platformDirectives from './directives/index'
 import platformComponents from './components/index'
 
 // install platform specific utils
-Vue.config.mustUseProp = mustUseProp // 原生dom属性，如selected等
-Vue.config.isReservedTag = isReservedTag // 判断是否为保留标签的方法（原生html和svg标签）
+Vue.config.mustUseProp = mustUseProp // 检测原生dom属性的方法，如selected等
+Vue.config.isReservedTag = isReservedTag // 判断是否为保留标签的方法（原生的html和svg相关的标签）
 Vue.config.isReservedAttr = isReservedAttr // 判断是否为保留属性的方法（style，class）
-Vue.config.getTagNamespace = getTagNamespace // 获取命名空间的方法（svg和mathML，分别返回svg和math)
+Vue.config.getTagNamespace = getTagNamespace // 获取命名空间的方法（svg和mathML相关标签，分别返回svg和math)
 Vue.config.isUnknownElement = isUnknownElement // 判断是否为无效的html标签，非浏览器下永远返回true
 
 // install platform runtime directives & components

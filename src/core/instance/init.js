@@ -10,13 +10,13 @@ import { initLifecycle, callHook } from './lifecycle'
 import { initProvide, initInjections } from './inject'
 import { extend, mergeOptions, formatComponentName } from '../util/index'
 
+// 全局自增的uid，每一个vm示例都有一个_uid属性，有uid从0开始递增得到
 let uid = 0
 
 export function initMixin (Vue: Class<Component>) {
   Vue.prototype._init = function (options?: Object) {
     const vm: Component = this
-    // 每个Vue实例都会有一个uid， 由0开始自增
-    vm._uid = uid++
+    vm._uid = uid++ // 每个Vue实例都会有一个uid， 由0开始自增
 
     let startTag, endTag
     /* istanbul ignore if */
@@ -26,13 +26,14 @@ export function initMixin (Vue: Class<Component>) {
       mark(startTag)
     }
 
-    // 标记为Vue组件，标记后不会被观察
-    vm._isVue = true
-    // 选项规范化和选项合并
+    vm._isVue = true // 标记为Vue组件，标记后不会被观察
+
+    /* ---选项规范化和选项合并---- */
     if (options && options._isComponent) { // 子组件选项合并
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
+      // _isComponent是在渲染阶段解析到子组件时内部实例化组件添加的一个属性
       // 选项合并是比较耗时的，所以对于内部的创建的组件，做了特别的合并处理
       // 这样可以提高选项合并的性能
       initInternalComponent(vm, options)
@@ -40,17 +41,21 @@ export function initMixin (Vue: Class<Component>) {
       // 将构造函数上的选项、传入的选项进行合并
       // 构造函数可以是Vue，也可以是使用Vue.extend继承生成的构造函数
       vm.$options = mergeOptions(
-        resolveConstructorOptions(vm.constructor),
-        options || {},
-        vm
+        resolveConstructorOptions(vm.constructor), // 处理构造器选项
+        options || {}, // 实例化时的选项
+        vm // 组件实例
       )
     }
+
+
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== 'production') {
       initProxy(vm)
     } else {
       vm._renderProxy = vm
     }
+
+
     // expose real self
     vm._self = vm
     //初始化$parent和$children并绑定父子关系，初始化$refs,$root,_watcher,_inactive,_isMounted,_isDestroyed,_isBeingDestroyed,_directInactive等属性
@@ -103,26 +108,32 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   }
 }
 
+
+// 处理构造函数的选项
+// 构造函数在使用Vue.extend继承的时候就将基类的选项合并到子类，缓存在Ctor.superOptions中
+// 而子类构造器自身的选项也会在创建构造器那一刻初始化了，存在Ctor.extendOptions
+// 实例化的时候，可能基类的options已经改变了，这个时候需要更新supoerOptions
+// 子类构造器本身的options可能也发生了改变，需要重新更新extendOptions
 export function resolveConstructorOptions (Ctor: Class<Component>) {
   let options = Ctor.options // 选项引用
-  if (Ctor.super) {
+  if (Ctor.super) { // 有super说明是个子类构造器
     // 递归合并
     const superOptions = resolveConstructorOptions(Ctor.super)
-    const cachedSuperOptions = Ctor.superOptions // 获取缓存的基类构造器选项
+    const cachedSuperOptions = Ctor.superOptions // 获取之前缓存起来的基类的构造器选项
     if (superOptions !== cachedSuperOptions) {
-      // 说明父类的options改变了，此时需要重新处理
       // super option changed,
       // need to resolve new options.
+      // 说明父类的options改变了，此时需要重新处理
       Ctor.superOptions = superOptions // 将新的基类options重新赋值给superOptions
       // check if there are any late-modified/attached options (#4976)
-      // 获取修改或者新增的属性集合
+      // 获取构造器修改或者新增的属性集合
       const modifiedOptions = resolveModifiedOptions(Ctor)
       // update base extend options
-      // 将得到的属性集合扩展至extendOptions的引用
+      // 将得到的更改过或者新增的属性集合扩展至Ctor.extendOptions
       if (modifiedOptions) {
         extend(Ctor.extendOptions, modifiedOptions)
       }
-      // 合并得到新的options
+      // 合并基类选项和子类选项得到新的options
       options = Ctor.options = mergeOptions(superOptions, Ctor.extendOptions)
       if (options.name) { // 如果有name属性，增加自查找属性
         options.components[options.name] = Ctor
@@ -132,7 +143,7 @@ export function resolveConstructorOptions (Ctor: Class<Component>) {
   return options
 }
 
-// 用于获取构造器选项修改
+// 用于获取子类构造器被修改或者新增的选项集合
 function resolveModifiedOptions (Ctor: Class<Component>): ?Object {
   let modified
   const latest = Ctor.options // 获取现在的构造器选项
@@ -145,6 +156,6 @@ function resolveModifiedOptions (Ctor: Class<Component>): ?Object {
       modified[key] = latest[key]
     }
   }
-  // 返回所有改边的属性集合
+  // 返回所有修改或者新增的属性集合
   return modified
 }

@@ -54,7 +54,7 @@ export function initRender (vm: Component) {
   }
 }
 
-export let currentRenderingInstance: Component | null = null
+export let currentRenderingInstance: Component | null = null // 当前渲染的实例
 
 // for testing only
 export function setCurrentRenderingInstance (vm: Component) {
@@ -92,9 +92,11 @@ export function renderMixin (Vue: Class<Component>) {
       // There's no need to maintain a stack becaues all render fns are called
       // separately from one another. Nested component's render fns are called
       // when parent component is patched.
-      // 所有的渲染函数都是单独调用的，当父组件打补丁时，所有的嵌套组件的render都会被重新执行
-      currentRenderingInstance = vm
-      // 调用render函数，接收的参数为vm.$createElement函数
+      // 所有的render函数都是单独调用的，
+      // 而所有的嵌套组件的render都会在父组件patch时执行
+      // 因此无需维护一个栈
+      currentRenderingInstance = vm // 标记当前正在渲染的组件实例
+      // vm._renderProxy在生产环境下就是vm，调用render函数，接收的参数为vm.$createElement函数
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
       handleError(e, vm, `render`)
@@ -115,6 +117,7 @@ export function renderMixin (Vue: Class<Component>) {
       currentRenderingInstance = null
     }
     // if the returned array contains only a single node, allow it
+    // 仅允许返回一个节点
     if (Array.isArray(vnode) && vnode.length === 1) {
       vnode = vnode[0]
     }

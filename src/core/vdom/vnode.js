@@ -15,31 +15,31 @@ export default class VNode {
 
   // strictly internal
   raw: boolean; // contains raw HTML? (server only)
-  isStatic: boolean; // hoisted static node
+  isStatic: boolean; // hoisted static node 静态节点
   isRootInsert: boolean; // necessary for enter transition check
-  isComment: boolean; // empty comment placeholder?
-  isCloned: boolean; // is a cloned node?
-  isOnce: boolean; // is a v-once node?
-  asyncFactory: Function | void; // async component factory function
-  asyncMeta: Object | void;
+  isComment: boolean; // 是否为空白占位节点（注释节点）
+  isCloned: boolean; // 是否是克隆而来的节点
+  isOnce: boolean; // 是否为一个v-once节点
+  asyncFactory: Function | void; // 异步组件的工厂函数
+  asyncMeta: Object | void; // 异步组件创建为占位节点时的原始信息
   isAsyncPlaceholder: boolean;
   ssrContext: Object | void;
-  fnContext: Component | void; // real context vm for functional nodes
+  fnContext: Component | void; // 函数式组件真实的渲染上下文实例（vm）
   fnOptions: ?ComponentOptions; // for SSR caching
   devtoolsMeta: ?Object; // used to store functional render context for devtools
   fnScopeId: ?string; // functional scope id support
 
   constructor (
-    tag?: string,
-    data?: VNodeData,
-    children?: ?Array<VNode>,
-    text?: string,
-    elm?: Node,
-    context?: Component,
-    componentOptions?: VNodeComponentOptions,
-    asyncFactory?: Function
+    tag?: string, // 标签
+    data?: VNodeData, // 数据
+    children?: ?Array<VNode>, // 子元素
+    text?: string, // 文本
+    elm?: Node, // 真实DOM
+    context?: Component, // 组件上下文
+    componentOptions?: VNodeComponentOptions, // 组件选项
+    asyncFactory?: Function // 异步组件的执行函数
   ) {
-    this.tag = tag
+    this.tag = tag 
     this.data = data
     this.children = children
     this.text = text
@@ -71,6 +71,7 @@ export default class VNode {
   }
 }
 
+// 创建注释节点
 export const createEmptyVNode = (text: string = '') => {
   const node = new VNode()
   node.text = text
@@ -78,6 +79,7 @@ export const createEmptyVNode = (text: string = '') => {
   return node
 }
 
+// 创建文本节点
 export function createTextVNode (val: string | number) {
   return new VNode(undefined, undefined, undefined, String(val))
 }
@@ -86,6 +88,7 @@ export function createTextVNode (val: string | number) {
 // used for static nodes and slot nodes because they may be reused across
 // multiple renders, cloning them avoids errors when DOM manipulations rely
 // on their elm reference.
+// 克隆节点，会标记isCloned为true
 export function cloneVNode (vnode: VNode): VNode {
   const cloned = new VNode(
     vnode.tag,

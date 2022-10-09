@@ -45,9 +45,9 @@ const componentVNodeHooks = {
       const mountedNode: any = vnode // work around flow
       componentVNodeHooks.prepatch(mountedNode, mountedNode)
     } else { // 子组件初始化
-      // 将实例挂载在vnode.componentInstance上面，方便后续取值
       // createComponentInstanceForVnode会调用 new Ctor(options)，进而会调用实例的_init方法
       // _init方法最后如果判断有$options.el会自动挂载，子组件是没有el的，所以会手动挂载
+      // 最后创建的Vue实例会实例存在占位VNode的.componentInstance属性上面，后续从此处取值渲染
       const child = vnode.componentInstance = createComponentInstanceForVnode(
         vnode,
         activeInstance
@@ -148,8 +148,10 @@ export function createComponent (
   let asyncFactory
   if (isUndef(Ctor.cid)) {
     asyncFactory = Ctor
-    Ctor = resolveAsyncComponent(asyncFactory, baseCtor)
-    if (Ctor === undefined) {
+    Ctor = resolveAsyncComponent(asyncFactory, baseCtor) // 解析异步组件
+    if (Ctor === undefined) { 
+      // 组件还没解析完成时，Ctor即为undefined
+      // 此时返回一个占位的节点（注释节点），该节点保留了所有的原始信息
       // return a placeholder node for async component, which is rendered
       // as a comment node but preserves all the raw information for the node.
       // the information will be used for async server-rendering and hydration.
@@ -177,7 +179,7 @@ export function createComponent (
   }
 
   // extract props
-  // 提取传递给由父组件传递进来的props
+  // 提取由父组件传递进来的props
   // 会先从props中获取，没有的话再从attrs中获取
   // 获取后会作为componentOptions中的propsData属性传递给VNode构造函数
   const propsData = extractPropsFromVNodeData(data, Ctor, tag)
