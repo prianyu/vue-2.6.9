@@ -18,11 +18,16 @@ import { isUpdatingChildComponent } from './lifecycle'
 
 export function initRender (vm: Component) {
   vm._vnode = null // 子树的根节点
-  vm._staticTrees = null // v-once cached trees
+  vm._staticTrees = null // v-once cached trees v-once标记的组件渲染后的静态的树
   const options = vm.$options
-  const parentVnode = vm.$vnode = options._parentVnode // 在父元素中的占位符
+  // 在父元素中的占位符
+  // 解析到子组件时，会创建一个占位的父vnode
+  // 这个vnode保存着各种组件的信息，如渲染上下文，children，Ctor，data等
+  const parentVnode = vm.$vnode = options._parentVnode 
   const renderContext = parentVnode && parentVnode.context // 渲染上下文
-  vm.$slots = resolveSlots(options._renderChildren, renderContext) // 插槽处理
+ // 插槽处理
+ // 组件的子组件都是被当作插槽来处理的,_renderChildren就是组件要渲染的children,renderContext为子组件在渲染时所处的上下文
+  vm.$slots = resolveSlots(options._renderChildren, renderContext) 
   vm.$scopedSlots = emptyObject // 作用域插槽
   // bind the createElement fn to this instance
   // so that we get proper render context inside it.
@@ -40,6 +45,7 @@ export function initRender (vm: Component) {
   // 响应式的$attrs和$listeners属性
   const parentData = parentVnode && parentVnode.data
 
+  // 从占位组件提取传进来的attrs和listeners
   /* istanbul ignore else */
   if (process.env.NODE_ENV !== 'production') {
     defineReactive(vm, '$attrs', parentData && parentData.attrs || emptyObject, () => {

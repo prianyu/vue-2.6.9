@@ -63,6 +63,8 @@ export function initGlobalAPI (Vue: GlobalAPI) {
 
   // this is used to identify the "base" constructor to extend all plain-object
   // components with in Weex's multi-instance scenarios.
+  // 用于子类构造函数的创建
+  // 该标识在选项合并（mergeOptions）阶段会被用来判断选项是否做过合并
   Vue.options._base = Vue
 
   // keepAlive组件

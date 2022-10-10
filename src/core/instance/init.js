@@ -40,8 +40,10 @@ export function initMixin (Vue: Class<Component>) {
     } else { // 非子组件选项合并
       // 将构造函数上的选项、传入的选项进行合并
       // 构造函数可以是Vue，也可以是使用Vue.extend继承生成的构造函数
+      // 选项合并后会对props，inject，direvtives做选项的规范话，已以及对mixins，extends，components等都做了合并
       vm.$options = mergeOptions(
-        resolveConstructorOptions(vm.constructor), // 处理构造器选项
+         // 处理构造器选项，只有是子类构造器，且子类或者基类构造器选项改变了才会重新计算
+        resolveConstructorOptions(vm.constructor),
         options || {}, // 实例化时的选项
         vm // 组件实例
       )
@@ -60,7 +62,7 @@ export function initMixin (Vue: Class<Component>) {
     vm._self = vm
     //初始化$parent和$children并绑定父子关系，初始化$refs,$root,_watcher,_inactive,_isMounted,_isDestroyed,_isBeingDestroyed,_directInactive等属性
     initLifecycle(vm)
-    //初始化_events,_hasHookEvent等属性，更新$options._parentListeners
+    //初始化_events,_hasHookEvent等属性，根据$options._parentListeners更新子组件的事件监听
     initEvents(vm)
     // 初始化_vnode,$vnode,$slots,$scopeSlots,$createElement,_c以及响应式的$listeners,$attrs等属性
     initRender(vm)
@@ -87,20 +89,22 @@ export function initMixin (Vue: Class<Component>) {
   }
 }
 
+
+// 子组件选项合并
 export function initInternalComponent (vm: Component, options: InternalComponentOptions) {
-  // 改变$options的原型指向
+  // $options以构造器的options作为原型
   const opts = vm.$options = Object.create(vm.constructor.options)
   // doing this because it's faster than dynamic enumeration.
   // 同步原型的属性，提高查找速度
-  const parentVnode = options._parentVnode
+  const parentVnode = options._parentVnode // 与vm.$vnode是同一个引用，是子组件的占位vnode
   opts.parent = options.parent
   opts._parentVnode = parentVnode
 
-  const vnodeComponentOptions = parentVnode.componentOptions
-  opts.propsData = vnodeComponentOptions.propsData
-  opts._parentListeners = vnodeComponentOptions.listeners
-  opts._renderChildren = vnodeComponentOptions.children
-  opts._componentTag = vnodeComponentOptions.tag
+  const vnodeComponentOptions = parentVnode.componentOptions // 创建占位vnode时保存的选项信息，如propsData,children等
+  opts.propsData = vnodeComponentOptions.propsData //提取propsData，即父组件传递给子组件的props
+  opts._parentListeners = vnodeComponentOptions.listeners //提取父组件传递给子组件的事件，是data.on的别名
+  opts._renderChildren = vnodeComponentOptions.children // 实际要渲染的内容，是一个vnode数组，在render时由createElement创建而来
+  opts._componentTag = vnodeComponentOptions.tag // 渲染的标签
 
   if (options.render) {
     opts.render = options.render

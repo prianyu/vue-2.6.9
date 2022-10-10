@@ -6,6 +6,7 @@ import { inBrowser, inWeex } from './env'
 import { isPromise } from 'shared/util'
 import { pushTarget, popTarget } from '../observer/dep'
 
+// @suspense
 export function handleError (err: Error, vm: any, info: string) {
   // Deactivate deps tracking while processing error handler to avoid possible infinite rendering.
   // See: https://github.com/vuejs/vuex/issues/1505
@@ -33,6 +34,7 @@ export function handleError (err: Error, vm: any, info: string) {
   }
 }
 
+// 有捕获错误能力的事件调用
 export function invokeWithErrorHandling (
   handler: Function,
   context: any,
@@ -42,14 +44,16 @@ export function invokeWithErrorHandling (
 ) {
   let res
   try {
+    // 尝试调用
     res = args ? handler.apply(context, args) : handler.call(context)
     if (res && !res._isVue && isPromise(res) && !res._handled) {
+      // 如果是一个promise的话，外部的catch是捕获不到的，需要通过其cathc来捕获错误
       res.catch(e => handleError(e, vm, info + ` (Promise/async)`))
       // issue #9511
       // avoid catch triggering multiple times when nested calls
-      res._handled = true
+      res._handled = true // 避免嵌套调用时重复触发
     }
-  } catch (e) {
+  } catch (e) {// 捕获错误
     handleError(e, vm, info)
   }
   return res

@@ -9,26 +9,32 @@ import {
 } from '../util/index'
 import { updateListeners } from '../vdom/helpers/index'
 
+// 事件初始化
 export function initEvents (vm: Component) {
   vm._events = Object.create(null)
   vm._hasHookEvent = false
   // init parent attached events
+  // 父组件绑定的传递给子组件的事件
   const listeners = vm.$options._parentListeners
   if (listeners) {
+    // 更新子组件的事件
     updateComponentListeners(vm, listeners)
   }
 }
 
-let target: any
+let target: any // 用于标记正在解析的Vue实例
 
+// 为target添加事件
 function add (event, fn) {
   target.$on(event, fn)
 }
 
+// target移除事件
 function remove (event, fn) {
   target.$off(event, fn)
 }
 
+//创建一个执行一次的函数
 function createOnceHandler (event, fn) {
   const _target = target
   return function onceHandler () {
@@ -39,14 +45,16 @@ function createOnceHandler (event, fn) {
   }
 }
 
+// 更新子组件的事件
 export function updateComponentListeners (
   vm: Component,
   listeners: Object,
   oldListeners: ?Object
 ) {
-  target = vm
+  target = vm // 标记当前正在解析的实例
+  // 执行事件监听的更新
   updateListeners(listeners, oldListeners || {}, add, remove, createOnceHandler, vm)
-  target = undefined
+  target = undefined // 事件更新完毕
 }
 
 export function eventsMixin (Vue: Class<Component>) {

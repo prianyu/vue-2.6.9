@@ -272,7 +272,7 @@ const defaultStrat = function (parentVal: any, childVal: any): any {
 }
 
 /**
- * Validate component names
+ * 检测component name的有效性
  */
 function checkComponents (options: Object) {
   for (const key in options.components) {
@@ -408,6 +408,7 @@ export function mergeOptions (
     checkComponents(child)
   }
 
+  // options是可以为一个函数的，比如构造函数，那么就取其options
   if (typeof child === 'function') {
     child = child.options
   }
@@ -421,6 +422,10 @@ export function mergeOptions (
   // the result of another mergeOptions call.
   // Only merged options has the _base property.
   // 合并extends和mixins
+  // 只对未合并过的options做处理，因为只有已经合并的options才有_base属性
+  // 没有_base属性，说明child是一个原始的选项对象，而不是另一个mergeOptions处理后的结果
+  // child._base是在initGlobalAPI的时候添加至options的，其值为Vue
+  // 合并时是将extends和mixins合并至parent，合并后的paren已经是一个新的对象
   if (!child._base) {
     if (child.extends) {
       parent = mergeOptions(parent, child.extends, vm)
@@ -432,6 +437,8 @@ export function mergeOptions (
     }
   }
 
+
+  // 根据不同选项的合并策略合并parent和child，返回新合并后的options
   const options = {}
   let key
   for (key in parent) {
@@ -443,7 +450,7 @@ export function mergeOptions (
     }
   }
   function mergeField (key) {
-    const strat = strats[key] || defaultStrat
+    const strat = strats[key] || defaultStrat // 获取合并策略
     options[key] = strat(parent[key], child[key], vm, key)
   }
   return options

@@ -5,6 +5,13 @@ import type VNode from 'core/vdom/vnode'
 /**
  * Runtime helper for resolving raw children VNodes into a slot object.
  * 用于将原有的子VNodes解析为一个插槽对象，按照插槽名称做归类处理
+ * 实例代码： 
+ *  <div>
+ *    <custom>
+ *       <inner></inner>
+ *    </custom>
+ *  </div>
+ * 在这里，custom和inner所处的上下文是同一个
  * @suspense
  */
 export function resolveSlots (
@@ -25,7 +32,7 @@ export function resolveSlots (
     }
     // named slots should only be respected if the vnode was rendered in the
     // same context.
-    // 命名插槽只有在当vnode出于同一上下文时才考虑处理
+    // 命名插槽只有在当vnode处于同一上下文时才考虑处理
     if ((child.context === context || child.fnContext === context) &&
       data && data.slot != null
     ) {// 命名插槽，如slot="header"

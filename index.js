@@ -12,13 +12,17 @@ const Custom = {
       age: 20
     }
   },
-  template: `<name>
-                <template v-slot:footer>
-                  Yu
-                  <slot name="header"></slot>
-                </template>
-                {{age}}
-             </name>`,
+  // template: `<name>
+  //               <template v-slot:footer>
+  //                 Yu
+  //                 <slot name="header"></slot>
+  //               </template>
+  //               {{age}}
+  //            </name>`,
+  template: `<div>
+              {{age}}
+              <slot></slot>
+            </div>`,
   components: {
     Name
   }
@@ -32,7 +36,8 @@ const app = new Vue({
     }
   },
   components: {
-    Custom
+    Custom,
+    Name
   }
   
 })
