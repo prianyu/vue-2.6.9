@@ -163,6 +163,8 @@ export function lifecycleMixin (Vue: Class<Component>) {
   }
 }
 
+
+// 组件挂载函数 
 export function mountComponent (
   vm: Component,
   el: ?Element,
@@ -370,6 +372,7 @@ export function deactivateChildComponent (vm: Component, direct?: boolean) {
 
 export function callHook (vm: Component, hook: string) {
   // #7573 disable dep collection when invoking lifecycle hooks
+  // Dep.target置空处理，该bug的解析见 ./state.js中getData函数的解析
   pushTarget()
   const handlers = vm.$options[hook]
   const info = `${hook} hook`

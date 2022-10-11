@@ -131,6 +131,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
 
 /**
  * Define a reactive property on an Object.
+ * 将一个对象定义为响应式的
  */
 export function defineReactive (
   obj: Object,
@@ -141,14 +142,16 @@ export function defineReactive (
 ) {
   const dep = new Dep()
 
+  // 获取属性的属性描述符
   const property = Object.getOwnPropertyDescriptor(obj, key)
-  if (property && property.configurable === false) {
+  if (property && property.configurable === false) { // 属性不可被删除或者修改，不作处理
     return
   }
 
   // cater for pre-defined getter/setters
-  const getter = property && property.get
-  const setter = property && property.set
+  const getter = property && property.get // 属性上已经定义的getter
+  const setter = property && property.set // 属性上已经定义的setter
+  // @suspense
   if ((!getter || setter) && arguments.length === 2) {
     val = obj[key]
   }

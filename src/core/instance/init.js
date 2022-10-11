@@ -83,7 +83,7 @@ export function initMixin (Vue: Class<Component>) {
       measure(`vue ${vm._name} init`, startTag, endTag)
     }
 
-    if (vm.$options.el) {
+    if (vm.$options.el) { // 传入了el，自动挂载
       vm.$mount(vm.$options.el)
     }
   }
@@ -106,6 +106,7 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   opts._renderChildren = vnodeComponentOptions.children // 实际要渲染的内容，是一个vnode数组，在render时由createElement创建而来
   opts._componentTag = vnodeComponentOptions.tag // 渲染的标签
 
+  // 保存渲染函数
   if (options.render) {
     opts.render = options.render
     opts.staticRenderFns = options.staticRenderFns
