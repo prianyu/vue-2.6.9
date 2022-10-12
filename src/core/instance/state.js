@@ -28,6 +28,7 @@ import {
   isReservedAttribute
 } from '../util/index'
 
+// 属性描述对象
 const sharedPropertyDefinition = {
   enumerable: true,
   configurable: true,

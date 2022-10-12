@@ -1,3 +1,4 @@
+
 const Name = {
   template: `<div>
               My name is <slot name="footer"></slot>
@@ -32,7 +33,8 @@ const app = new Vue({
   data() {
     return {
       aa: "12",
-      name: "name"
+      name: "name",
+      arr: [1,2,3]
     }
   },
   components: {
@@ -42,4 +44,7 @@ const app = new Vue({
   
 })
 app.$mount("#app")
+setTimeout(() => {
+  app.arr.push(4,5,6)
+}, 1000)
 console.log(app)

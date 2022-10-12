@@ -170,7 +170,7 @@ export function mountComponent (
   el: ?Element,
   hydrating?: boolean
 ): Component {
-  // 将el赋值给vm.$el
+  // 将el赋值给vm.$el，此时的el已经是一个DOM元素      
   vm.$el = el
   // 没有render函数会将render函数重置为创建空节点的函数
   // 同时如果有el和template的话，说明el或者template没有被转化为render函数，
@@ -236,7 +236,7 @@ export function mountComponent (
     }
   }, true /* isRenderWatcher */)
   hydrating = false
-
+ 
   // manually mounted instance, call mounted on self
   // mounted is called for render-created child components in its inserted hook
   // 将实例标记为已挂载状态，执行挂载完成钩子
