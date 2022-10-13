@@ -10,6 +10,7 @@ export const unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037
 /**
  * Check if a string starts with $ or _
  */
+// 检测是否为$和_开头
 export function isReserved (str: string): boolean {
   const c = (str + '').charCodeAt(0)
   return c === 0x24 || c === 0x5F
@@ -31,9 +32,10 @@ export function def (obj: Object, key: string, val: any, enumerable?: boolean) {
 /**
  * Parse simple path.
  */
+// 解析一个路径入a.b.c，并返回一个从指定属性路径获取属性的函数
 const bailRE = new RegExp(`[^${unicodeRegExp.source}.$_\\d]`)
 export function parsePath (path: string): any {
-  if (bailRE.test(path)) {
+  if (bailRE.test(path)) { // 不合法的字符
     return
   }
   const segments = path.split('.')

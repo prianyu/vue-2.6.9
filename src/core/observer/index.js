@@ -46,7 +46,7 @@ export class Observer {
   constructor (value: any) {
     this.value = value // 保存原有对象的引用
     this.dep = new Dep() // 创建一个依赖收集器
-    this.vmCount = 0 // 初始化的实例应用计数为0，引用计数后期可以用来做观察者实例的销毁
+    this.vmCount = 0 // 初始化的实例应用计数为0，vmCount > 0，$set 方法不进行处理
     // 使用属性描述对象，往被观察的对象添加__ob__属性，引用当前创建的观察者实例，
     //__ob__是不可以枚举的
     def(value, '__ob__', this) 
@@ -63,7 +63,6 @@ export class Observer {
       // 数组本身的观察只会观察数组本身这个引用值的变化
       // 但是数据里面的每一项也是需要被观察的，所以需要对数组的每一项进行递归调用observe进行观察
       // 由于observe函数只处理引用类型，所以普通类型的数组元素是不会被观察的
-      // Observer观察的是键，不是值，因此类似arr[1] = 234的写法是不会触发观察者分发的
       this.observeArray(value) // 数组递归转化
     } else { // 对象，遍历对象属性，添加getter/setter
       this.walk(value)
@@ -79,6 +78,7 @@ export class Observer {
   walk (obj: Object) {
     const keys = Object.keys(obj) // 属性列表
     for (let i = 0; i < keys.length; i++) {
+      // #mark-0
       defineReactive(obj, keys[i]) // 定义setter/getter
     }
   }
@@ -128,6 +128,8 @@ function copyAugment (target: Object, src: Object, keys: Array<string>) {
  * 为一个数据创建一个数据监测器（只有引用类型的数据才会创建）
  * 如果已经创建过则返回旧的监测器
  * 否则返回创建的监测器
+ * 创建后的数据会有一个__ob__属性
+ * __ob__里会有一个dep对象属性用于收集依赖
  */
 export function observe (value: any, asRootData: ?boolean): Observer | void {
   // 基本类型和VNode是不创建的
@@ -135,18 +137,19 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
     return
   }
   let ob: Observer | void
-  if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) { // 已经创建过
+  if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) { // 已经观测
     ob = value.__ob__
   } else if (
     shouldObserve && // 需要被观察
     !isServerRendering() && // 非服务端渲染
     (Array.isArray(value) || isPlainObject(value)) && // 数组或者纯对象
-    Object.isExtensible(value) && // 对象可扩展的（可添加属性）
+    Object.isExtensible(value) && // 对象可扩展的（可添加属性），Object.freeze/Object.seal等处理的对象是不可扩展的
     !value._isVue // 非Vue实例
   ) {
     ob = new Observer(value) // 创建Observer实例，创建后的实例会存在value.__ob__中
   }
   if (asRootData && ob) { // 实例的根数据，则ob的实例引用数+1
+    // Vue.set方法会判断vmCount是否大于0，如果是的话是无法处理的，也就是Vue.set是无法对根数据的key进行响应式处理的
     ob.vmCount++
   }
   return ob
@@ -154,7 +157,26 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
 
 /**
  * Define a reactive property on an Object.
- * 将一个对象定义为响应式的
+ * 将一个对象定义为响应式的getter/setter
+ * 举例：
+ * obj = {
+ *    __ob__: Observer // 对象会有一个__ob__属性，__ob__.dep保存着obj的Dep 
+ *     a: {
+ *        // 这里会有一个闭包的dep也引用着a的dep
+ *        __ob__: Observer // 同样只要是引用类型就会有__ob__，其__ob__.dep就会保存其dep
+ *        aa: 123, // 不是引用类型，所以只有闭包引用的dep
+ *     },
+ *     b: 345 // 不是引用类型，所以只有闭包引用的dep,
+ *     
+ *     arr: [
+ *        // 基本类型的数组成员是没有dep的，也没有闭包的dep，所以arr[1] = 2这里写法不能触发更新
+ *        1,2,3,4,5
+ *        // 引用类型的成员有__ob__.dep，但是没有闭包的dep引用
+ *        {
+ *          __ob__: Observer // 是引用类型，所以有__ob__.dep的引用
+ *        }
+ *     ]
+ * }
  */
 export function defineReactive (
   obj: Object,
@@ -163,6 +185,7 @@ export function defineReactive (
   customSetter?: ?Function,
   shallow?: boolean
 ) {
+  // 被属性闭包引用的依赖收集器
   const dep = new Dep()
 
   // 获取属性的属性描述符
@@ -174,21 +197,50 @@ export function defineReactive (
   // cater for pre-defined getter/setters
   const getter = property && property.get // 属性上已经定义的getter
   const setter = property && property.set // 属性上已经定义的setter
-  // @suspense
+  /**
+   * 功能：如果没有显式的设置val的值，则进行设置
+   * 条件等同于(!getter || setter && getter) && arguments.length === 2
+   * 此处的条件与下方#mark-2处是对称的，用于处理同一个bug
+   * Bug分析：
+   * 1. 最初的时候，Vue在Observer的walk方法（见上方#mark-0)是这样调用的：
+   * defineReactive(obj, keys[i], obj[keys[i]])
+   * 也就是传了第三个参数，即在进行观测之前获取了对象属性的值，这将导致一个bug，见（issues #7280）：
+   * 即当被obj[key]本身具有getter时，在获取值的时候就会触发getter函数，而getter函数本身是由用户定义的，
+   * 我们是无法预知用户是如何定义这个函数的，可能会导致一些意想不到的事情（比如搞了弹窗、其他副作用之类的事），
+   * 出于避免这种不可预见的行为的考虑，在walk函数中调用改为了defineReactive(obj, keys[i])，即不先获取值
+   * 然后在defineReactive函数中，添加if (!getter && arguments.length === 2) 这个条件，表示
+   * 当不传第三个参数且没有用户定义的getter时，才去获取这个值赋给val，这样对于有getter的obj[key]就不会触发getter了
+   * 而没有getter的将会按照原本传递第三个参数的行为正常工作
+   * 2. 然而修复以上问题后，又带来了另一个问题:
+   * 当没有getter时，我们会求值得到val并对其进行深度观测，观测后val就有了getter和setter，这里记为（1）
+   * 当val改变时，会触发setter，在setter中会对新的值进行重新观测
+   * childOb = !shallow && observe(newVal)
+   * 此时调用defineReactive时，发现getter是存在的，那么又会跳过newVal的观测
+   * 这就造成了前后不一致的结果
+   * 由于在（1）中，观测后会同时拥有setter和getter，因此，我们可以补充一个条件，就是当同时拥有getter和setter时也需要进行深度观测
+   * 于是条件变为了if ((!getter || setter) && arguments.length === 2)
+   * 这样的话，如果初始化的情况就已经有setter和getter，也会执行，那么情景1的bug其实还是会存在
+   * 
+   */
+  // #mark-1
+  // 如果只有getter，就不会走这个逻辑，此时val为undefined，即val不会被深度监测
   if ((!getter || setter) && arguments.length === 2) {
     val = obj[key]
   }
 
+  //对val进行深度观测，得到的值为childOb，即为val.__ob__, childOb会被闭包引用
+  // 由于observe方法又会调用defineReactive,所以本质上这里是个递归
   let childOb = !shallow && observe(val)
+
   Object.defineProperty(obj, key, {
-    enumerable: true,
-    configurable: true,
+    enumerable: true, //可枚举
+    configurable: true, // 可删除
     get: function reactiveGetter () {
-      const value = getter ? getter.call(obj) : val
-      if (Dep.target) {
-        dep.depend()
+      const value = getter ? getter.call(obj) : val // 优先从getter取值
+      if (Dep.target) { // 收集当前watcher
+        dep.depend() //  将dep收集反向收集到watcher中
         if (childOb) {
-          childOb.dep.depend()
+          childOb.dep.depend() //收集子dep
           if (Array.isArray(value)) {
             dependArray(value)
           }
@@ -197,23 +249,33 @@ export function defineReactive (
       return value
     },
     set: function reactiveSetter (newVal) {
-      const value = getter ? getter.call(obj) : val
+      const value = getter ? getter.call(obj) : val // 获取旧值
       /* eslint-disable no-self-compare */
+      // 值没有改变，或者前后的值为NaN，则不做处理
       if (newVal === value || (newVal !== newVal && value !== value)) {
         return
       }
       /* eslint-enable no-self-compare */
+
+      // customSetter是自定义的setter，在$listens, $attrs,props,inject都传了这个参数
+      // 用于做一些操作的提醒
       if (process.env.NODE_ENV !== 'production' && customSetter) {
         customSetter()
       }
       // #7981: for accessor properties without setter
+      // #mark-2
+      // 此处与上方#mark -1处解决的是同一个bug
       if (getter && !setter) return
-      if (setter) {
+
+
+      if (setter) { // 本身具有setter则调用
         setter.call(obj, newVal)
-      } else {
+      } else { // 赋值
         val = newVal
       }
+      // 新设置的值能是一个object，需要重新观测
       childOb = !shallow && observe(newVal)
+      // 通知依赖更新
       dep.notify()
     }
   })
@@ -224,22 +286,28 @@ export function defineReactive (
  * triggers change notification if the property doesn't
  * already exist.
  */
+// $set, Vue.set
 export function set (target: Array<any> | Object, key: any, val: any): any {
   if (process.env.NODE_ENV !== 'production' &&
     (isUndef(target) || isPrimitive(target))
   ) {
     warn(`Cannot set reactive property on undefined, null, or primitive value: ${(target: any)}`)
   }
+  // 如果是数组，且key是有效的index，则调用数组上的splice方法即可完成替换
+  // 需要更新数组的长度
   if (Array.isArray(target) && isValidArrayIndex(key)) {
     target.length = Math.max(target.length, key)
     target.splice(key, 1, val)
     return val
   }
+  // 如果key在对象自身中已经存在，则直接赋值即可，避免重复触发
   if (key in target && !(key in Object.prototype)) {
     target[key] = val
     return val
   }
   const ob = (target: any).__ob__
+
+  // 如果是vue实例或者根数据，则不应该被设置
   if (target._isVue || (ob && ob.vmCount)) {
     process.env.NODE_ENV !== 'production' && warn(
       'Avoid adding reactive properties to a Vue instance or its root $data ' +
@@ -247,28 +315,37 @@ export function set (target: Array<any> | Object, key: any, val: any): any {
     )
     return val
   }
+
+  // 如果目标对象本身就不是响应式的，则新增的属性也没必要转为响应式的数据
   if (!ob) {
     target[key] = val
     return val
   }
+  // 如果对象是响应式的，检测新添加的属性值
   defineReactive(ob.value, key, val)
+  // 对象变化了，触发通知更新
   ob.dep.notify()
+  // 返回设置的值
   return val
 }
 
 /**
  * Delete a property and trigger change if necessary.
  */
+// Vue.delete, $delete
 export function del (target: Array<any> | Object, key: any) {
   if (process.env.NODE_ENV !== 'production' &&
     (isUndef(target) || isPrimitive(target))
   ) {
     warn(`Cannot delete reactive property on undefined, null, or primitive value: ${(target: any)}`)
   }
+  // 如果是数组，调用splice方法删除即可
   if (Array.isArray(target) && isValidArrayIndex(key)) {
     target.splice(key, 1)
     return
   }
+
+  // 根元素和vue实例不允许此操作
   const ob = (target: any).__ob__
   if (target._isVue || (ob && ob.vmCount)) {
     process.env.NODE_ENV !== 'production' && warn(
@@ -277,19 +354,23 @@ export function del (target: Array<any> | Object, key: any) {
     )
     return
   }
+  // 没有要删除的属性，不处理
   if (!hasOwn(target, key)) {
     return
   }
-  delete target[key]
+  delete target[key] // 删除属性
+  // 本身不是响应式的，则不需要处理
   if (!ob) {
     return
   }
+  // target是响应式的，通知更新
   ob.dep.notify()
 }
 
 /**
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
+ * 
  */
 function dependArray (value: Array<any>) {
   for (let e, i = 0, l = value.length; i < l; i++) {

@@ -16,7 +16,7 @@ import Dep, { pushTarget, popTarget } from './dep'
 
 import type { SimpleSet } from '../util/index'
 
-let uid = 0
+let uid = 0 // watcher的唯一标识
 
 /**
  * A watcher parses an expression, collects dependencies,
@@ -24,43 +24,44 @@ let uid = 0
  * This is used for both the $watch() api and directives.
  */
 export default class Watcher {
-  vm: Component;
-  expression: string;
-  cb: Function;
-  id: number;
-  deep: boolean;
-  user: boolean;
-  lazy: boolean;
-  sync: boolean;
-  dirty: boolean;
-  active: boolean;
-  deps: Array<Dep>;
-  newDeps: Array<Dep>;
-  depIds: SimpleSet;
-  newDepIds: SimpleSet;
-  before: ?Function;
-  getter: Function;
-  value: any;
+  vm: Component; // vue实例
+  expression: string; // 监听的属性
+  cb: Function; // wathcher回调
+  id: number; // 唯一标识
+  deep: boolean; // 是否深度观测
+  user: boolean; // 是否为$watch调用
+  lazy: boolean; // 是否惰性计算，用于计算属性
+  sync: boolean; // 是否同步执行
+  dirty: boolean; // 是否为脏的，用于计算属性，当为脏时会重新计算值
+  active: boolean; // 是否可用
+  deps: Array<Dep>; // 上一次的依赖收集
+  newDeps: Array<Dep>; // 新的的依赖收集
+  depIds: SimpleSet; // 上一次依赖收集的id集合
+  newDepIds: SimpleSet; // 新的依赖收集的id集合
+  before: ?Function; // 执行前的钩子
+  getter: Function; // 取值的getter
+  value: any; // watcher的计算结果
 
   constructor (
-    vm: Component,
-    expOrFn: string | Function,
-    cb: Function,
-    options?: ?Object,
-    isRenderWatcher?: boolean
+    vm: Component, // 实例
+    expOrFn: string | Function,// 监听的属性
+    cb: Function, //回调函数
+    options?: ?Object, // 选项
+    isRenderWatcher?: boolean // 是否为渲染watcher
   ) {
     this.vm = vm
-    if (isRenderWatcher) {
+    if (isRenderWatcher) { // 渲染watcher单独存放在实例的属性上
+      // 当需要强制刷新时可以调用该watcher，是$forceUpdate的核心实现原理
       vm._watcher = this
     }
-    vm._watchers.push(this)
+    vm._watchers.push(this) // 存储所有的watcher
     // options
     if (options) {
-      this.deep = !!options.deep
-      this.user = !!options.user
-      this.lazy = !!options.lazy
-      this.sync = !!options.sync
-      this.before = options.before
+      this.deep = !!options.deep // 是否深度监听
+      this.user = !!options.user // 是否为$watcherd定义
+      this.lazy = !!options.lazy // 是否惰性计算
+      this.sync = !!options.sync // 是否同步监听
+      this.before = options.before // 执行前的钩子
     } else {
       this.deep = this.user = this.lazy = this.sync = false
     }
@@ -79,7 +80,7 @@ export default class Watcher {
     if (typeof expOrFn === 'function') {
       this.getter = expOrFn
     } else {
-      this.getter = parsePath(expOrFn)
+      this.getter = parsePath(expOrFn) // 得到一个可以按照路径获取属性值的函数
       if (!this.getter) {
         this.getter = noop
         process.env.NODE_ENV !== 'production' && warn(
@@ -99,11 +100,11 @@ export default class Watcher {
    * Evaluate the getter, and re-collect dependencies.
    */
   get () {
-    pushTarget(this)
+    pushTarget(this) // 将Dep.target赋值为当前watcher，开启依赖收集
     let value
     const vm = this.vm
     try {
-      value = this.getter.call(vm, vm)
+      value = this.getter.call(vm, vm) // 计算值
     } catch (e) {
       if (this.user) {
         handleError(e, vm, `getter for watcher "${this.expression}"`)
@@ -113,9 +114,10 @@ export default class Watcher {
     } finally {
       // "touch" every property so they are all tracked as
       // dependencies for deep watching
-      if (this.deep) {
+      if (this.deep) { // 深度监听
         traverse(value)
       }
+      // 收集完毕，恢复Dep.target，清理deps
       popTarget()
       this.cleanupDeps()
     }
@@ -127,10 +129,11 @@ export default class Watcher {
    */
   addDep (dep: Dep) {
     const id = dep.id
+    // 如果新的dep集合中不包含dep， 则添加给dep
     if (!this.newDepIds.has(id)) {
       this.newDepIds.add(id)
       this.newDeps.push(dep)
-      if (!this.depIds.has(id)) {
+      if (!this.depIds.has(id)) { // 如果旧的dep中不包含该dep，则在dep里添加该watcher
         dep.addSub(this)
       }
     }
@@ -141,15 +144,17 @@ export default class Watcher {
    */
   cleanupDeps () {
     let i = this.deps.length
-    while (i--) {
+    while (i--) { // 清除在新的deps中不存在的旧的dep
       const dep = this.deps[i]
       if (!this.newDepIds.has(dep.id)) {
         dep.removeSub(this)
       }
     }
+
+    // 将新的deps赋值给旧deps，移除新的deps
     let tmp = this.depIds
-    this.depIds = this.newDepIds
-    this.newDepIds = tmp
+    this.depIds = this.newDepIds 
+    this.newDepIds = tmp // 
     this.newDepIds.clear()
     tmp = this.deps
     this.deps = this.newDeps
@@ -160,12 +165,13 @@ export default class Watcher {
   /**
    * Subscriber interface.
    * Will be called when a dependency changes.
+   * 当依赖变化时会触发watcher的更新
    */
   update () {
     /* istanbul ignore else */
-    if (this.lazy) {
+    if (this.lazy) { // 如果是惰性计算的，则标记为脏的
       this.dirty = true
-    } else if (this.sync) {
+    } else if (this.sync) { // 
       this.run()
     } else {
       queueWatcher(this)
