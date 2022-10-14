@@ -220,6 +220,8 @@ export function defineReactive (
    * 由于在（1）中，观测后会同时拥有setter和getter，因此，我们可以补充一个条件，就是当同时拥有getter和setter时也需要进行深度观测
    * 于是条件变为了if ((!getter || setter) && arguments.length === 2)
    * 这样的话，如果初始化的情况就已经有setter和getter，也会执行，那么情景1的bug其实还是会存在
+   * 3. 见下方#mark-2如果obj[val]只有getter没有setter时，说明只是访问器属性，但是后续使用Object.defineProperty又定义了setter，
+   * 同时对新值又做了深度观测，这个是不合逻辑的，因此，在set中又增加了一个if (getter && !setter) return的条件
    * 
    */
   // #mark-1
@@ -263,8 +265,7 @@ export function defineReactive (
         customSetter()
       }
       // #7981: for accessor properties without setter
-      // #mark-2
-      // 此处与上方#mark -1处解决的是同一个bug
+      // #mark-2 访问器属性不做深度观测
       if (getter && !setter) return
 
 

@@ -126,6 +126,7 @@ export default class Watcher {
 
   /**
    * Add a dependency to this directive.
+   * 添加dep
    */
   addDep (dep: Dep) {
     const id = dep.id
@@ -141,6 +142,7 @@ export default class Watcher {
 
   /**
    * Clean up for dependency collection.
+   * 清理deps
    */
   cleanupDeps () {
     let i = this.deps.length

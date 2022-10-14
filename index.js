@@ -28,10 +28,25 @@ const Custom = {
     Name
   }
 }
+const age = 18
+const person = Object.defineProperty({}, 'age', {
+  enumerable: true, //可枚举
+  configurable: true, // 可删除
+  get: function() {
+    console.log(1)
+    return age
+  },
+  // set: function(val) {
+  //   alert('set')
+  //   age = val
+  // }
+})
+
 
 const app = new Vue({
   data() {
     return {
+      person,
       aa: "12",
       name: "name",
       arr: [1,2,3]
