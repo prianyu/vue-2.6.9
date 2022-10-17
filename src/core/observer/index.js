@@ -171,7 +171,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
  *     arr: [
  *        // 基本类型的数组成员是没有dep的，也没有闭包的dep，所以arr[1] = 2这里写法不能触发更新
  *        1,2,3,4,5
- *        // 引用类型的成员有__ob__.dep，但是没有闭包的dep引用
+ *        // 引用类型的成员有__ob__.dep，但是数组没有闭包的dep引用
  *        {
  *          __ob__: Observer // 是引用类型，所以有__ob__.dep的引用
  *        }
@@ -240,10 +240,13 @@ export function defineReactive (
     get: function reactiveGetter () {
       const value = getter ? getter.call(obj) : val // 优先从getter取值
       if (Dep.target) { // 收集当前watcher
-        dep.depend() //  将dep收集反向收集到watcher中
+        //  dep.depend()会调用Dep.target.addDep(Dep.target)，将dep收集反向收集到watcher中
+       // Dep.target.addDep(Dep.target)又会调用dep的，会将Dep.target添加至dep.subs中，从而实现依赖的收集
+       // 调用完毕后Dep.target的deps也存放着dep列表，这个反向收集的dep列表，在watcher被销毁时，可以清空dep
+        dep.depend() 
         if (childOb) {
           childOb.dep.depend() //收集子dep
-          if (Array.isArray(value)) {
+          if (Array.isArray(value)) { // 如果是数组，则通过数据项的__ob__.dep.depend收集依赖
             dependArray(value)
           }
         }
@@ -371,6 +374,8 @@ export function del (target: Array<any> | Object, key: any) {
 /**
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
+ * 对于数组，由于我们不能想对象那样对属性进行拦截访问，所以在访问数组的时候，
+ * 可以通过数据项存储的__ob__来获取到dep进行依赖收集
  * 
  */
 function dependArray (value: Array<any>) {

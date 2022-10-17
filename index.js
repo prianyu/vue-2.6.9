@@ -49,17 +49,24 @@ const app = new Vue({
       person,
       aa: "12",
       name: "name",
-      arr: [1,2,3]
+      arr: [1,2,3],
+      watcher: new Date()
     }
   },
   components: {
     Custom,
     Name
+  },
+  watch: {
+    watcher: function() {
+      this.watcher = new Date()// 陷入了死循环
+    }
   }
   
 })
 app.$mount("#app")
 setTimeout(() => {
   app.arr.push(4,5,6)
+  app.watcher = new Date()
 }, 1000)
 console.log(app)

@@ -23,7 +23,7 @@ export default class Dep {
     this.subs = [] // 用于存放订阅者
   }
 
-  // 添加订阅
+  // 添加订阅者
   addSub (sub: Watcher) {
     this.subs.push(sub)
   }
@@ -43,7 +43,7 @@ export default class Dep {
   // 通知更新
   notify () {
     // stabilize the subscriber list first
-    const subs = this.subs.slice() // 这个过程钟，subs是可能会变的，所以先拷贝一份
+    const subs = this.subs.slice() // 这个过程中，subs是可能会变的，所以先拷贝一份
     if (process.env.NODE_ENV !== 'production' && !config.async) {
       // subs aren't sorted in scheduler if not running async
       // we need to sort them now to make sure they fire in correct
@@ -65,7 +65,7 @@ export default class Dep {
 Dep.target = null
 const targetStack = [] // 用于存放计算的watcher队列
 // 使用栈的原因：当前的Dep.target存在，会收集依赖，假如想在Dep.target存在时执行某一段代码的过程中，
-//不需要进行依赖收集，那么可以往栈里压入一个null，变成[watcher, null]，这是Dep.target被临时置为了null
+// 不需要进行依赖收集，那么可以往栈里压入一个null，变成[watcher, null]，这时Dep.target被临时置为了null
 // 也就不会进行依赖收集。代码执行完后再把null弹出，Dep.target恢复，后续的代码又可以进行依赖收集了
 // 场景：比如在props的初始化阶段
 

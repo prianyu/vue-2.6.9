@@ -91,6 +91,7 @@ export default class Watcher {
         )
       }
     }
+    // 不是惰性求值的情况下触发一次取值，这样就可以进行依赖收集了
     this.value = this.lazy
       ? undefined
       : this.get()
@@ -98,6 +99,8 @@ export default class Watcher {
 
   /**
    * Evaluate the getter, and re-collect dependencies.
+   * 初次求值和后续重新求值都会调用该方法，Dep.target会赋值为当前watcher
+   * 因此watcher内部维护了一个deps和depIds用于记录上一次求值时已经执行过的收集的依赖
    */
   get () {
     pushTarget(this) // 将Dep.target赋值为当前watcher，开启依赖收集
@@ -114,7 +117,8 @@ export default class Watcher {
     } finally {
       // "touch" every property so they are all tracked as
       // dependencies for deep watching
-      if (this.deep) { // 深度监听
+      // 深度监听，通过不断递归访问对象的属性来触发属性的getter实现深度依赖收集
+      if (this.deep) { 
         traverse(value)
       }
       // 收集完毕，恢复Dep.target，清理deps
@@ -130,7 +134,7 @@ export default class Watcher {
    */
   addDep (dep: Dep) {
     const id = dep.id
-    // 如果新的dep集合中不包含dep， 则添加给dep
+    // 如果新的dep集合中不包含dep， 则添加给dep，可避免重复收集
     if (!this.newDepIds.has(id)) {
       this.newDepIds.add(id)
       this.newDeps.push(dep)
@@ -146,14 +150,15 @@ export default class Watcher {
    */
   cleanupDeps () {
     let i = this.deps.length
-    while (i--) { // 清除在新的deps中不存在的旧的dep
+    // 如果上次求值时收集的依赖在当前求值时没有的依赖，则将其移除掉
+    while (i--) { 
       const dep = this.deps[i]
       if (!this.newDepIds.has(dep.id)) {
         dep.removeSub(this)
       }
     }
 
-    // 将新的deps赋值给旧deps，移除新的deps
+    // 将新的deps赋值给旧deps，清空新的deps
     let tmp = this.depIds
     this.depIds = this.newDepIds 
     this.newDepIds = tmp // 
@@ -173,9 +178,9 @@ export default class Watcher {
     /* istanbul ignore else */
     if (this.lazy) { // 如果是惰性计算的，则标记为脏的
       this.dirty = true
-    } else if (this.sync) { // 
+    } else if (this.sync) { // 同步更新
       this.run()
-    } else {
+    } else { // 异步更新
       queueWatcher(this)
     }
   }
@@ -186,7 +191,8 @@ export default class Watcher {
    */
   run () {
     if (this.active) {
-      const value = this.get()
+      const value = this.get() // 重新求值
+      // 值改变了，或者新值是对象（有可能引用的对象值已经发生了变化）时执行
       if (
         value !== this.value ||
         // Deep watchers and watchers on Object/Arrays should fire even
@@ -196,9 +202,13 @@ export default class Watcher {
         this.deep
       ) {
         // set new value
-        const oldValue = this.value
-        this.value = value
-        if (this.user) {
+        // 当返回值是引用类型时，由于可能仅仅是对象的值发生了变化，对象引用并没有改变，所以oldValue和value可能同一个对象
+        // 因此，在监听回调中获取这两个值时，实际上获取到的是同一个值
+        const oldValue = this.value // 获取旧值
+        this.value = value // 获取新值
+
+        // 执行监听的回调函数
+        if (this.user) { // 用户自定义的watcher需要捕获一下错误
           try {
             this.cb.call(this.vm, value, oldValue)
           } catch (e) {
@@ -214,6 +224,7 @@ export default class Watcher {
   /**
    * Evaluate the value of the watcher.
    * This only gets called for lazy watchers.
+   * 重新求值，这个直在惰性求值的watcher中被调用，求值完成后dirty会被置为false
    */
   evaluate () {
     this.value = this.get()
@@ -232,15 +243,21 @@ export default class Watcher {
 
   /**
    * Remove self from all dependencies' subscriber list.
+   * 从所有依赖的订阅列表中卸载掉当前的watcher
    */
   teardown () {
-    if (this.active) {
+    if (this.active) { // 还没失活
       // remove self from vm's watcher list
       // this is a somewhat expensive operation so we skip it
       // if the vm is being destroyed.
+      // 在实例vm中删除watcher的依赖是一个昂贵的操作，如果vm已经已经被销毁了就跳过
+
+      // 还没销毁，在vm_.watchers中当前watcher
       if (!this.vm._isBeingDestroyed) {
         remove(this.vm._watchers, this)
       }
+
+      // 移除当前watcher中所有的订阅
       let i = this.deps.length
       while (i--) {
         this.deps[i].removeSub(this)
