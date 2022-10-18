@@ -169,10 +169,12 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
  *     b: 345 // 不是引用类型，所以只有闭包引用的dep,
  *     
  *     arr: [
+ *        // arr会有一个闭包的dep，而arr又是对象，所以会有__ob__.dep
  *        // 基本类型的数组成员是没有dep的，也没有闭包的dep，所以arr[1] = 2这里写法不能触发更新
  *        1,2,3,4,5
  *        // 引用类型的成员有__ob__.dep，但是数组没有闭包的dep引用
  *        {
+ *          item: 'item',
  *          __ob__: Observer // 是引用类型，所以有__ob__.dep的引用
  *        }
  *     ]
@@ -374,7 +376,7 @@ export function del (target: Array<any> | Object, key: any) {
 /**
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
- * 对于数组，由于我们不能想对象那样对属性进行拦截访问，所以在访问数组的时候，
+ * 对于数组，由于我们不能像对象那样对属性进行拦截访问，所以在访问数组的时候，
  * 可以通过数据项存储的__ob__来获取到dep进行依赖收集
  * 
  */
@@ -382,7 +384,7 @@ function dependArray (value: Array<any>) {
   for (let e, i = 0, l = value.length; i < l; i++) {
     e = value[i]
     e && e.__ob__ && e.__ob__.dep.depend()
-    if (Array.isArray(e)) {
+    if (Array.isArray(e)) { // 数组，递归收集
       dependArray(e)
     }
   }

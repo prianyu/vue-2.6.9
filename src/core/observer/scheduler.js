@@ -68,7 +68,7 @@ function flushSchedulerQueue () {
   currentFlushTimestamp = getNow() // 当前刷新时的时间戳
   flushing = true // 标记为正在刷新队列
   let watcher, id
-
+    
   // Sort queue before flush.
   // This ensures that:
   // 1. Components are updated from parent to child. (because parent is always
@@ -123,8 +123,8 @@ function flushSchedulerQueue () {
   resetSchedulerState()
 
   // call component updated and activated hooks
-  callActivatedHooks(activatedQueue)
-  callUpdatedHooks(updatedQueue)
+  callActivatedHooks(activatedQueue) // 执行keep-alive组件的activated钩子
+  callUpdatedHooks(updatedQueue)// 执行updated生命周期
 
   // devtool hook
   /* istanbul ignore if */
@@ -133,11 +133,14 @@ function flushSchedulerQueue () {
   }
 }
 
+
+// 执行updated钩子
 function callUpdatedHooks (queue) {
   let i = queue.length
   while (i--) {
     const watcher = queue[i]
     const vm = watcher.vm
+    // 只有组件实例的渲染watcher为当前watcher且未销毁已挂载过时才执行updated钩子
     if (vm._watcher === watcher && vm._isMounted && !vm._isDestroyed) {
       callHook(vm, 'updated')
     }
@@ -157,7 +160,7 @@ export function queueActivatedComponent (vm: Component) {
   activatedChildren.push(vm)
 }
 
-// 执行keep-alive
+// 执行keep-alive的activated生命周期
 function callActivatedHooks (queue) {
   for (let i = 0; i < queue.length; i++) {
     queue[i]._inactive = true

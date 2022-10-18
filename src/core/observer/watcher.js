@@ -180,7 +180,7 @@ export default class Watcher {
       this.dirty = true
     } else if (this.sync) { // 同步更新
       this.run()
-    } else { // 异步更新
+    } else { // 异步更新，通过任务调度来实现
       queueWatcher(this)
     }
   }

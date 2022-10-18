@@ -8,14 +8,14 @@ import { isIE, isIOS, isNative } from './env'
 export let isUsingMicroTask = false // 用于标记是否使用了微任务
 
 const callbacks = []
-let pending = false
+let pending = false // 等待状态
 
 function flushCallbacks () {
-  pending = false
-  const copies = callbacks.slice(0)
-  callbacks.length = 0
+  pending = false // 标记为非等待解决状态
+  const copies = callbacks.slice(0) // 拷贝回调函数
+  callbacks.length = 0 // 清空回调函数
   for (let i = 0; i < copies.length; i++) {
-    copies[i]()
+    copies[i]() // 执行回调
   }
 }
 
@@ -123,14 +123,14 @@ export function nextTick (cb?: Function, ctx?: Object) {
       } catch (e) {
         handleError(e, ctx, 'nextTick')
       }
-    } else if (_resolve) {// 没有传cb且支持Promise，返回一个Promise
+    } else if (_resolve) {// 没有cb回调且支持Promise，返回一个Promise
       _resolve(ctx)
     }
   })
   // 非pending状态下执行回调函数
   if (!pending) {
-    pending = true
-    timerFunc()
+    pending = true // 标记未待解决状态
+    timerFunc() // 执行任务
   }
   // $flow-disable-line
   if (!cb && typeof Promise !== 'undefined') {
