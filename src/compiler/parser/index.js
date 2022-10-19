@@ -75,12 +75,13 @@ export function createASTElement (
 
 /**
  * Convert HTML string to AST.
+ * 将HTMLzh转为抽象语法树
  */
 export function parse (
   template: string,
   options: CompilerOptions
 ): ASTElement | void {
-  warn = options.warn || baseWarn
+  warn = options.warn || baseWarn // 提醒函数
 
   platformIsPreTag = options.isPreTag || no
   platformMustUseProp = options.mustUseProp || no
@@ -92,12 +93,12 @@ export function parse (
   preTransforms = pluckModuleFunction(options.modules, 'preTransformNode')
   postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
 
-  delimiters = options.delimiters
+  delimiters = options.delimiters // 插值表达式分隔符
 
   const stack = []
-  const preserveWhitespace = options.preserveWhitespace !== false
+  const preserveWhitespace = options.preserveWhitespace !== false // 是否保留空格/换行
   const whitespaceOption = options.whitespace
-  let root
+  let root // 根元素
   let currentParent
   let inVPre = false
   let inPre = false

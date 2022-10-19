@@ -58,7 +58,7 @@ export function initLifecycle (vm: Component) {
   vm.$refs = {} // $refs
 
   vm._watcher = null // 渲染watcher
-  vm._inactive = null // 组件是否出于keepAlive
+  vm._inactive = null // 组件是否处于keepAlive
   vm._directInactive = false
   vm._isMounted = false // 是否已挂载
   vm._isDestroyed = false // 是否已销毁

@@ -93,7 +93,7 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {// 优先使用Promise
     characterData: true
   })
   timerFunc = () => {
-    counter = (counter + 1) % 2
+    counter = (counter + 1) % 2 
     textNode.data = String(counter)
   }
   isUsingMicroTask = true // 标记为微任务
@@ -124,7 +124,7 @@ export function nextTick (cb?: Function, ctx?: Object) {
         handleError(e, ctx, 'nextTick')
       }
     } else if (_resolve) {// 没有cb回调且支持Promise，返回一个Promise
-      _resolve(ctx)
+      _resolve(ctx) // 将Promise的resolve执行
     }
   })
   // 非pending状态下执行回调函数
