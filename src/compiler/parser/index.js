@@ -83,23 +83,25 @@ export function parse (
 ): ASTElement | void {
   warn = options.warn || baseWarn // 提醒函数
 
-  platformIsPreTag = options.isPreTag || no
-  platformMustUseProp = options.mustUseProp || no
-  platformGetTagNamespace = options.getTagNamespace || no
-  const isReservedTag = options.isReservedTag || no
-  maybeComponent = (el: ASTElement) => !!el.component || !isReservedTag(el.tag)
+  platformIsPreTag = options.isPreTag || no // 是否为pre标签
+  platformMustUseProp = options.mustUseProp || no // 是否为prop属性，如checked
+  platformGetTagNamespace = options.getTagNamespace || no // 获取命名空间
+  const isReservedTag = options.isReservedTag || no // 是否为保留标签（html+svg标签）
+  maybeComponent = (el: ASTElement) => !!el.component || !isReservedTag(el.tag) // 是否为组件
 
+  // 从style、class、model几个modules中提取它们的transformNode、preTransformNode、postTransformNode方法
   transforms = pluckModuleFunction(options.modules, 'transformNode')
   preTransforms = pluckModuleFunction(options.modules, 'preTransformNode')
   postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
 
-  delimiters = options.delimiters // 插值表达式分隔符
+  delimiters = options.delimiters // 插值表达式定界符
 
   const stack = []
+  
   const preserveWhitespace = options.preserveWhitespace !== false // 是否保留空格/换行
-  const whitespaceOption = options.whitespace
-  let root // 根元素
-  let currentParent
+  const whitespaceOption = options.whitespace // 空白处理
+  let root // 根元素，最终返回根元素所在的树
+  let currentParent // 当前父元素
   let inVPre = false
   let inPre = false
   let warned = false
@@ -202,6 +204,7 @@ export function parse (
     }
   }
 
+  // 解析HTML
   parseHTML(template, {
     warn,
     expectHTML: options.expectHTML,
@@ -380,11 +383,12 @@ export function parse (
         }
       }
     },
-    comment (text: string, start, end) {
+    comment (text: string, start, end) { // 注释节点处理
       // adding anyting as a sibling to the root node is forbidden
       // comments should still be allowed, but ignored
+      // 将节点压入父节点
       if (currentParent) {
-        const child: ASTText = {
+        const child: ASTText = { //注释节点
           type: 3,
           text,
           isComment: true
