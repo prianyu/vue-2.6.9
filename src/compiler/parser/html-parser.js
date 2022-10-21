@@ -27,8 +27,8 @@ const comment = /^<!\--/ // 匹配注释节点开始标记的正则
 const conditionalComment = /^<!\[/ // 匹配条件注释开始的正则
 
 // Special Elements (can contain anything)
-export const isPlainTextElement = makeMap('script,style,textarea', true)
-const reCache = {}
+export const isPlainTextElement = makeMap('script,style,textarea', true) // 判断是否为纯文本标签
+const reCache = {} // 缓存匹配纯文本标签内容和结束标签的正则
 
 const decodingMap = {
   '&lt;': '<',
@@ -44,7 +44,7 @@ const encodedAttrWithNewLines = /&(?:lt|gt|quot|amp|#39|#10|#9);/g
 
 // #5992
 const isIgnoreNewlineTag = makeMap('pre,textarea', true)
-const shouldIgnoreFirstNewline = (tag, html) => tag && isIgnoreNewlineTag(tag) && html[0] === '\n'
+const shouldIgnoreFirstNewline = (tag, html) => tag && isIgnoreNewlineTag(tag) && html[0] === '\n' //是否忽略第一行空白行
 
 function decodeAttr (value, shouldDecodeNewlines) {
   const re = shouldDecodeNewlines ? encodedAttrWithNewLines : encodedAttr
@@ -170,11 +170,15 @@ export function parseHTML (html, options) {
       }
     } else {// 处理textarea\style\script等纯文本标签
       let endTagLength = 0
-      const stackedTag = lastTag.toLowerCase()
+      const stackedTag = lastTag.toLowerCase() // 获取上一次的标签名
+      // 用于匹配纯文本标签的内容和结束标签的正则
       const reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'))
       const rest = html.replace(reStackedTag, function (all, text, endTag) {
+        // 如"alert(1)</script>"匹配的结果为
+        // all: "alert(1)</script>", "alert(1)", "</script>"
         endTagLength = endTag.length
-        if (!isPlainTextElement(stackedTag) && stackedTag !== 'noscript') {
+        // @suspense
+        if (!isPlainTextElement(stackedTag) && stackedTag !== 'noscript') {// 存在lastTag，但是不是纯文本标签
           text = text
             .replace(/<!\--([\s\S]*?)-->/g, '$1') // #7298
             .replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1')
@@ -187,11 +191,13 @@ export function parseHTML (html, options) {
         }
         return ''
       })
+      //调整htnml和index
       index += html.length - rest.length
       html = rest
       parseEndTag(stackedTag, index - endTagLength, index)
     }
 
+    // 处理结束了，如果此时stack还有内容，说明还有标签没有被闭合，给出提示
     if (html === last) {
       options.chars && options.chars(html)
       if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {
