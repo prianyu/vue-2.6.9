@@ -24,7 +24,7 @@ const endTag = new RegExp(`^<\\/${qnameCapture}[^>]*>`)// 闭合标签
 const doctype = /^<!DOCTYPE [^>]+>/i // 匹配doctye标签
 // #7298: escape - to avoid being pased as HTML comment when inlined in page
 const comment = /^<!\--/ // 匹配注释节点开始标记的正则
-const conditionalComment = /^<!\[/ // 匹配条件注释开始的正则
+const conditionalComment = /^<!\[/ // 匹配downlevel-revealed非规范写法的条件注释
 
 // Special Elements (can contain anything)
 export const isPlainTextElement = makeMap('script,style,textarea', true) // 判断是否为纯文本标签
@@ -53,21 +53,22 @@ function decodeAttr (value, shouldDecodeNewlines) {
 
 // 解析html
 export function parseHTML (html, options) {
-  const stack = []
+  const stack = [] // 用于存放解析的开发标签
   const expectHTML = options.expectHTML
   const isUnaryTag = options.isUnaryTag || no // 判断是否为自闭合标签
   const canBeLeftOpenTag = options.canBeLeftOpenTag || no // 判断是否为可省略闭合标签
   let index = 0 // 当前解析的html所在的位置
   let last, lastTag
   while (html) { 
-    last = html
+    last = html // 将当前html记录起来，用于后续比较
     // Make sure we're not in a plaintext content element like script/style/textarea
-    // 确保当前的解析不是在一个纯文本的标签环境内，如script/style标签
+    // 确保当前的解析不是在一个纯文本的标签环境内，如script/style/textarea标签
     if (!lastTag || !isPlainTextElement(lastTag)) {
-      let textEnd = html.indexOf('<') // 也是获取<所在的位置，也是普通文本结束的位置（如“鸡你太美<span>蔡徐坤</span>”）
+       // 获取<所在的位置，也是普通文本结束的位置（如“鸡你太美<span>蔡徐坤</span>”，得到的是<span>标签的开始位置）
+      let textEnd = html.indexOf('<')
       if (textEnd === 0) { // 所在位置为0，则为一个标签的开始
-        // Comment:
-        if (comment.test(html)) { // 注释节点开始标记
+        // Comment: 注释节点，如果配置了保留就保留，否则就删除掉
+        if (comment.test(html)) { // 注释节点开始标记 <!--
           const commentEnd = html.indexOf('-->') // 查找注释节点的结束标记
 
           if (commentEnd >= 0) { // 找到了注释节点的结束标记
@@ -82,11 +83,29 @@ export function parseHTML (html, options) {
         }
 
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
-        // IE的条件注释节点
-        if (conditionalComment.test(html)) {
-          const conditionalEnd = html.indexOf(']>') // 查找条件注释的结束标记
+        /**
+         * IE的条件注释
+         * 条件注释是由两种语法的
+         * 1. downlevel-hidden <!--[if expression]> HTML <![endif]--> ，叫下层隐藏
+         *    这种语法，在支持的浏览器会正常判断并决定是否渲染，在不支持的浏览器会当作普通注释，内容不会被识别到永远不会展示
+         * 2 . downlevel-revealed <![if expression]> HTML <![endif]>，叫下层展示
+         *    这种语法，在支持的浏览器上会正常判断并决定是否渲染，在不支持的浏览器下可以正常识别内容，并将其当作普通的html解析展示
+         *    （如大于IE9或非IE）
+         *    这种其实是一种不符合规范的写法，其规范写法为<!--[if expression]>-->HTML<!--<![endif]-->
+         * 等价于：<!--[if expression]><!-->HTML<!--<![endif]-->
+         */ 
+        /**
+         * 另外，IE注释节点在浏览器加载的时候就执行了，也就是Vue还没执行时就已经执行
+         * 直到Vue开始解析时，在支持条件注释的IE浏览器相应的注释部分将会被替换为真实的HTML，
+         * 如<!-- if gt IE 8]><span>test</span><![endif]-->会被替换为<span>test</span>
+         * 按照以上规则，对于downlevel-hidden以及downlevel-revealed的规范写法的条件注释，不支持的浏览器已经被作为普通注释节点解析了
+         * 以下逻辑则是专门处理downlevel-revealed的非规范写法，如果解析到了，则说明当下不支持条件注释，则直接移除条件注释语法并保留
+         * 其内容就可以了
+         */
+        if (conditionalComment.test(html)) { // <![
+          const conditionalEnd = html.indexOf(']>') // ]>
 
-          // 调整html和index，继续遍历
+          // 删除整个条件节点，直接调整html和index，继续遍历
           if (conditionalEnd >= 0) { 
             advance(conditionalEnd + 2)
             continue
@@ -100,9 +119,13 @@ export function parseHTML (html, options) {
           advance(doctypeMatch[0].length)
           continue
         }
-        // 走到这一步，说明解析的不是注释节点、doctype节点合IE的条件注释节点
-        // 开始解析结束标签
-        // End tag:
+        // 走到这一步，说明解析的不是注释节点、doctype节点和IE的条件注释节点
+
+
+        // 解析结束标签（结束标签解析时只有以结束标签标记开头才可以解析到）
+        // 如 html = "<span></span></div><div>...</div>"这个时候匹配到的endTagMatch为null
+        // html = "</div><div>...</div>"这时候就可以匹配到</div>这个结束标签
+        // End tag: 会关闭标签并从stack中移除开始标签的记录，也会处理br标签
         const endTagMatch = html.match(endTag) // 匹配结束标签
         if (endTagMatch) {
           const curIndex = index // 记录当前的index
@@ -114,10 +137,11 @@ export function parseHTML (html, options) {
         }
 
         // Start tag: 处理开始标签
-        const startTagMatch = parseStartTag()
+        // 匹配开始标签，含有标签名和属性集合 {tagName, attrs, start, end}
+        const startTagMatch = parseStartTag() 
         if (startTagMatch) {
-          // 进一步处理上一步得到结果，并最后调用 options.start 方法
-          // 真正的解析工作都是在这个 start 方法中做的
+          // 进一步处理上一步得到结果，主要是对属性值做一些编码解码处理以及对不可相互嵌套的标签做处理，
+          // 最后调用 options.start 方法生成AST并处理AST，抽象语法树的工作都是在这个 start 方法中做的
           handleStartTag(startTagMatch)
           if (shouldIgnoreFirstNewline(startTagMatch.tagName, html)) {
             advance(1)
@@ -126,9 +150,10 @@ export function parseHTML (html, options) {
         }
       }
 
+      // 以下解析裸漏的普通文本
       let text, rest, next
       if (textEnd >= 0) {
-        // 走到这里，说明html中虽然匹配到了<xx，但不属于上述的情况，它就是只是一个普通的文本，如“<我是普通文本”
+        // 走到这里，说明html中虽然匹配到了<xx，但不属于上述的情况，它就是只是一个普通的文本，如`<我是普通文本 a="test" :b="test2"`
         // 于是从html中找到下一个<，直到<xx是上述的几种情况的标签，则结束
         // 在这个过程中，一直在调整textEnd的值，作为html中下一个有效标签的开始位置
 
@@ -140,12 +165,13 @@ export function parseHTML (html, options) {
           !startTagOpen.test(rest) &&
           !comment.test(rest) &&
           !conditionalComment.test(rest)
+          // 只要剩余的html开头匹配不到这些情况
         ) {
           // < in plain text, be forgiving and treat it as text
          
-          next = rest.indexOf('<', 1)
-          if (next < 0) break // 没有找到<，则直接结束循环
-          // 走到这里，说明在后续的字符串中找到了<，索引的位置为textEnd
+          next = rest.indexOf('<', 1) // 找到下一个<的位置
+          if (next < 0) break // 没有找到<，则直接结束循环，认为后续的所有的内容都是普通文本
+          // 走到这里，说明在后续的字符串中找到了<，更新textEnd的位置为下一个<所在的位置，继续找下一个<
           textEnd += next
           // 截取html字符串模板textEnd之后的内容赋值给rest，继续判断后续字符串是否存在标签
           rest = html.slice(textEnd)
@@ -169,14 +195,14 @@ export function parseHTML (html, options) {
         options.chars(text, index - text.length, index)
       }
     } else {// 处理textarea\style\script等纯文本标签
-      let endTagLength = 0
+      let endTagLength = 0 // 闭合标签的长度
       const stackedTag = lastTag.toLowerCase() // 获取上一次的标签名
       // 用于匹配纯文本标签的内容和结束标签的正则
       const reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'))
       const rest = html.replace(reStackedTag, function (all, text, endTag) {
         // 如"alert(1)</script>"匹配的结果为
         // all: "alert(1)</script>", "alert(1)", "</script>"
-        endTagLength = endTag.length
+        endTagLength = endTag.length // 得到结束标签的长度
         // @suspense
         if (!isPlainTextElement(stackedTag) && stackedTag !== 'noscript') {// 存在lastTag，但是不是纯文本标签
           text = text
@@ -197,7 +223,10 @@ export function parseHTML (html, options) {
       parseEndTag(stackedTag, index - endTagLength, index)
     }
 
-    // 处理结束了，如果此时stack还有内容，说明还有标签没有被闭合，给出提示
+    // 处理结束了，html和last相等，说明经历完以上的逻辑后，html并没有发生任何的改变
+    // 此时就将整段html当作纯文本来处理
+    // 这是一种极端情况，即处理完标签后stack还有标签，但是却没有后续的处理
+    // 举例：<div></div><a
     if (html === last) {
       options.chars && options.chars(html)
       if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {
@@ -218,6 +247,11 @@ export function parseHTML (html, options) {
   }
 
   // 解析开始标签
+  // 1. 匹配到开始标签
+  // 2. 提取标签内所有的属性
+  // 3. 标签完整则返回标签描述对象（含标签名、属性集合等）
+  // 4. 标签不完整返回undefined
+
   function parseStartTag () {
     // 匹配，得到类似['<div', 'div', index: 0, length: 2]的结构
     const start = html.match(startTagOpen) 
@@ -255,6 +289,13 @@ export function parseHTML (html, options) {
         match.attrs.push(attr)
       }
       // 走到这里为开始标签匹配结束，此时如果有闭合的话，end可能为>或/>
+      // 这里由于只有end能匹配到时才可以正常返回标签节点，如果匹配不到则返回undefined
+      //，所以parseHTML函数中调用完无法执行coutinue继续下一次循环，会走到普通文本的处理
+      // 同时，由于在以上的循环中解析属性时已经对html进行了截取，所以再处理普通文本时已经丢失了这一部分的内容
+      // 这个处理与浏览器处理HTML的方式并不一致，浏览器的处理方式则是这一部分解析不到完整结束标签的内容会被
+      // 当作普通文本来处理，所以这个是Vue的一个bug？
+      // 举例：
+      // template: `<div a="1" b="c"`Vue会解析为空标签，浏览器则会解析没有内容标签放到html中
       if (end) {
         match.unarySlash = end[1] // 如果是/>，此时为/
         advance(end[0].length) // 重新调整html和index至开始标签结束的位置
@@ -265,6 +306,11 @@ export function parseHTML (html, options) {
   }
 
   // 处理解析出来的开始标签
+  // 1. 判断是否在p标签内且不能包含在p标签内，是的话则将上一次解析到的p标签关闭
+  // 2. 判断是否为不能互相直接嵌套的元素（如li，td）,是则关闭上一个元素
+  // 3. 对属性进行编码处理
+  // 4. 将非自闭合标签的开标签压入stack，并赋值给lastTag
+  // 5. 执行start回调，创建AST和处理AST对象的各种指令等（v-if,v-for...)
   function handleStartTag (match) {
     const tagName = match.tagName // 标签名
     const unarySlash = match.unarySlash // 开始标签结束的 /
@@ -286,18 +332,19 @@ export function parseHTML (html, options) {
     // 自闭合标签，如input、br或者已经自闭合
     const unary = isUnaryTag(tagName) || !!unarySlash
 
-    // 遍历属性
+    // 遍历属性并处理
     const l = match.attrs.length
     const attrs = new Array(l)
     for (let i = 0; i < l; i++) {
       const args = match.attrs[i]
       const value = args[3] || args[4] || args[5] || '' // 获取属性值
+      // 判断是否解码属性内的换行符
       const shouldDecodeNewlines = tagName === 'a' && args[1] === 'href'
         ? options.shouldDecodeNewlinesForHref
         : options.shouldDecodeNewlines
       attrs[i] = {
         name: args[1], // 属性名
-        value: decodeAttr(value, shouldDecodeNewlines) // 属性值
+        value: decodeAttr(value, shouldDecodeNewlines) // 属性值进行解码
       }
       if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
         attrs[i].start = args.start + args[0].match(/^\s*/).length
@@ -327,6 +374,10 @@ export function parseHTML (html, options) {
   }
 
   // 解析结束标签
+  // 1. 查找出开始标签，如果找出来的开始标签不在stack最后一个，说明该标签内部存在未闭合的标签，给出提示
+  // 2. 所有未闭合的标签和当前解析到的标签执行end回调，做关闭处理
+  // 3. 已经闭合的标签会从stack中移除
+  // 4. 处理了</br>和独立的</p>标签，这两个本质上被当作换行标签处理，其中</p>会被处理成<p></p>，</br>被处理成<br>
   function parseEndTag (tagName, start, end) {
     let pos, lowerCasedTagName
     if (start == null) start = index
@@ -334,7 +385,7 @@ export function parseHTML (html, options) {
 
     // Find the closest opened tag of the same type
     // 倒序遍历stack数组，查找第一个与当前结束标签同名的标签，该标签就是结束标签对应的开始标签的描述对象
-    // 理论上，不出意外的画，stack数组中最后一个元素就是当前结束标签的开始标签的描述对象
+    // 理论上，不出意外的话，stack数组中最后一个元素就是当前结束标签的开始标签的描述对象
     if (tagName) {
       lowerCasedTagName = tagName.toLowerCase() // 将标签名转为小写
       for (pos = stack.length - 1; pos >= 0; pos--) {
@@ -342,12 +393,12 @@ export function parseHTML (html, options) {
           break
         }
       }
-    } else {
+    } else { // 没有提供tagName，说明调用方不是从解析到结束标签过来的，本质是用来清理stack里剩余的标签
       // If no tag name is provided, clean shop
       pos = 0
     }
     
-    // 走到这一步，如果找到同名的标签，pos>=0,否则就是找不到
+    // 如果找到同名的标签，pos>=0或者tagName为空，否则pos = -1
     if (pos >= 0) { // 当前处理的元素为普通的元素
       // Close all the open elements, up the stack
       // 这个循环主要是为了将stack数组中，索引>=pos的所有标签给关闭了
@@ -365,7 +416,7 @@ export function parseHTML (html, options) {
             { start: stack[i].start, end: stack[i].end }
           )
         }
-        if (options.end) { // 处理结束标签
+        if (options.end) { // 处理所有的结束标签
           options.end(stack[i].tag, start, end)
         }
       }
@@ -379,10 +430,10 @@ export function parseHTML (html, options) {
         options.start(tagName, [], true, start, end)
       }
     } else if (lowerCasedTagName === 'p') { // 处理的是p标签，则处理</p>标签
-      if (options.start) {
+      if (options.start) { // 补充一个<p>开始标签
         options.start(tagName, [], false, start, end)
       }
-      if (options.end) {
+      if (options.end) { // 关闭p标签
         options.end(tagName, start, end)
       }
     }

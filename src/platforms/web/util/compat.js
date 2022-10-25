@@ -30,6 +30,8 @@ import { inBrowser } from 'core/util/index'
  */
 
 
+  // 创建一个div元素，并让其innerHTML为具有某个属性值含有换行符的标签
+  // 再获取innerHTML，判断是否有被编码后的字符
 let div
 function getShouldDecode (href: boolean): boolean {
   div = div || document.createElement('div')

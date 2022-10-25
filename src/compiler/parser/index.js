@@ -115,23 +115,32 @@ export function parse (
   }
 
   // 关闭标签
+     /**
+     * 主要做了 3 件事：
+     *   1、如果元素没有被处理过，即 el.processed 为 false，则调用 processElement 方法处理节点上的众多属性
+     *   2、让自己和父元素产生关系，将自己放到父元素的 children 数组中，并设置自己的 parent 属性为 currentParent
+     *   3、设置自己的子元素，将自己所有非插槽的子元素放到自己的 children 数组中
+     */
   function closeElement (element) {
     trimEndingWhitespace(element) // 删除尾部的空白节点
+    // 处理整个元素
     if (!inVPre && !element.processed) {
       element = processElement(element, options)
     }
     // tree management
+    // 允许根元素使用条件语句
     if (!stack.length && element !== root) {
       // allow root elements with v-if, v-else-if and v-else
       if (root.if && (element.elseif || element.else)) {
         if (process.env.NODE_ENV !== 'production') {
-          checkRootConstraints(element)
+          checkRootConstraints(element) // 检查是否为template和slot等元素
         }
+        // 給根元素增加elseif条件
         addIfCondition(root, {
           exp: element.elseif,
           block: element
         })
-      } else if (process.env.NODE_ENV !== 'production') {
+      } else if (process.env.NODE_ENV !== 'production') { // stack为空了，且root不为空，说明了有多个根节点
         warnOnce(
           `Component template should contain exactly one root element. ` +
           `If you are using v-if on multiple elements, ` +
@@ -140,36 +149,44 @@ export function parse (
         )
       }
     }
+    // 有父节点
     if (currentParent && !element.forbidden) {
+      // 当前元素有elseif或else条件，则判断其前一个兄弟元素是否有if条件
+      // 有则添加条件，无则报错
       if (element.elseif || element.else) {
         processIfConditions(element, currentParent)
       } else {
-        if (element.slotScope) {
+        if (element.slotScope) { // 有作用域插槽
           // scoped slot
           // keep it in the children list so that v-else(-if) conditions can
           // find it as the prev node.
-          const name = element.slotTarget || '"default"'
+          // 将作用域插槽保存在子节点列表中，以便v-else（-if）条件可以将其作为prev节点
+          // @suspense
+          const name = element.slotTarget || '"default"'// 作用域插槽的name属性
           ;(currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
         }
-        currentParent.children.push(element)
-        element.parent = currentParent
+        currentParent.children.push(element) // 将当前元素放入其父元素
+        element.parent = currentParent // 当前元素的parent指向父元素
       }
     }
 
     // final children cleanup
     // filter out scoped slots
+    // 过滤掉子元素中的作用域插槽
     element.children = element.children.filter(c => !(c: any).slotScope)
     // remove trailing whitespace node again
-    trimEndingWhitespace(element)
+    trimEndingWhitespace(element)// 删除尾部的空白节点
 
     // check pre state
-    if (element.pre) {
+    if (element.pre) { //如果有v-pre指令，标签闭合后，重置inVPre为false
       inVPre = false
     }
-    if (platformIsPreTag(element.tag)) {
+    // 如果是pre标签，闭合后重置inPre为false
+    if (platformIsPreTag(element.tag)) { 
       inPre = false
     }
     // apply post-transforms
+    // 后置转化处理
     for (let i = 0; i < postTransforms.length; i++) {
       postTransforms[i](element, options)
     }
@@ -214,12 +231,12 @@ export function parse (
   parseHTML(template, {
     warn,
     expectHTML: options.expectHTML,
-    isUnaryTag: options.isUnaryTag,
-    canBeLeftOpenTag: options.canBeLeftOpenTag,
-    shouldDecodeNewlines: options.shouldDecodeNewlines,
-    shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
-    shouldKeepComment: options.comments,
-    outputSourceRange: options.outputSourceRange,
+    isUnaryTag: options.isUnaryTag, // 是否为自闭合标签
+    canBeLeftOpenTag: options.canBeLeftOpenTag, // 是否为可省略闭合标签的标签
+    shouldDecodeNewlines: options.shouldDecodeNewlines, //  需要对属性换行符做处理
+    shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref, // 需要对a标签的属性换行符做处理
+    shouldKeepComment: options.comments, // 是否需要保留注释节点
+    outputSourceRange: options.outputSourceRange, // 输出解析的标签在模板的位置
     /**
      * 做了6件事
      * 1. 创建AST对象
@@ -328,6 +345,9 @@ export function parse (
       }
     },
 
+    // 关闭标签
+    // 弹出stack中最后一个元素，并将currentParent设置为上一个父元素
+    // 对标签做闭合处理
     end (tag, start, end) {
       const element = stack[stack.length - 1]
       // pop stack
@@ -339,15 +359,15 @@ export function parse (
       closeElement(element)
     },
 
-    chars (text: string, start: number, end: number) {
+    chars (text: string, start: number, end: number) { // @supense
       if (!currentParent) {
         if (process.env.NODE_ENV !== 'production') {
-          if (text === template) {
+          if (text === template) { // 传递了文本节点作为template
             warnOnce(
               'Component template requires a root element, rather than just text.',
               { start }
             )
-          } else if ((text = text.trim())) {
+          } else if ((text = text.trim())) { // 根节点的以外的文本节点会被忽略
             warnOnce(
               `text "${text}" outside root element will be ignored.`,
               { start }
@@ -364,10 +384,11 @@ export function parse (
       ) {
         return
       }
+      // 当前父节点的子节点集合
       const children = currentParent.children
-      if (inPre || text.trim()) {
+      if (inPre || text.trim()) { // 如果是style或script标签则保留原内容，否则做内容编码
         text = isTextTag(currentParent) ? text : decodeHTMLCached(text)
-      } else if (!children.length) {
+      } else if (!children.length) {// @suspense
         // remove the whitespace-only node right after an opening tag
         text = ''
       } else if (whitespaceOption) {
@@ -608,14 +629,17 @@ function processIf (el) {
   }
 }
 
+// 处理else和elseif条件
 function processIfConditions (el, parent) {
+  // 获取前一个兄弟元素
   const prev = findPrevElement(parent.children)
-  if (prev && prev.if) {
+  // 如果前一个兄弟元素有if条件，则给其添加elseif条件
+  if (prev && prev.if) { 
     addIfCondition(prev, {
       exp: el.elseif,
       block: el
     })
-  } else if (process.env.NODE_ENV !== 'production') {
+  } else if (process.env.NODE_ENV !== 'production') { // 没有具有if条件的前兄弟元素，则条件无效
     warn(
       `v-${el.elseif ? ('else-if="' + el.elseif + '"') : 'else'} ` +
       `used on element <${el.tag}> without corresponding v-if.`,
@@ -624,6 +648,7 @@ function processIfConditions (el, parent) {
   }
 }
 
+// 查找上一个兄弟元素，此查找会忽略并删除兄弟文本节点
 function findPrevElement (children: Array<any>): ASTElement | void {
   let i = children.length
   while (i--) {
@@ -665,7 +690,8 @@ function processSlotContent (el) {
   // 处理旧的slot-scope和scope指令语法
   let slotScope
   if (el.tag === 'template') {
-    slotScope = getAndRemoveAttr(el, 'scope') // 旧语法<template slot="xxx">
+    // 获取scope属性（2.5版本以下的语法）
+    slotScope = getAndRemoveAttr(el, 'scope') // 旧语法<template scope="xxx">
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production' && slotScope) {
       warn(
@@ -677,8 +703,8 @@ function processSlotContent (el) {
         true
       )
     }
-    el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope') // 获取template的slot-scoped指令的内容
-  } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) { // 非template元素
+    el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope') // 获取template的slot-scoped属性的内容
+  } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) { // 非template元素具有slot-scoped属性
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production' && el.attrsMap['v-for']) {
       warn(
@@ -689,7 +715,7 @@ function processSlotContent (el) {
         true
       )
     }
-    el.slotScope = slotScope // 非template元素的sltot-scope指令的内容
+    el.slotScope = slotScope // 非template元素的sltot-scope属性的内容
   }
 
   // slot="xxx"
@@ -841,7 +867,13 @@ function processComponent (el) {
 
 // 处理属性
 /**
- * v-bind
+  // 处理元素上的所有属性
+  // v-bind 指令变成：el.attrs 或 el.dynamicAttrs = [{ name, value, start, end, dynamic }, ...]，
+  // 或者是必须使用 props 的属性，变成了 el.props = [{ name, value, start, end, dynamic }, ...]
+  //  v-on 指令变成：el.events 或 el.nativeEvents = { name: [{ value, start, end, modifiers, dynamic }, ...] }
+  //  其它指令：el.directives = [{name, rawName, value, arg, isDynamicArg, modifier, start, end }, ...]
+  //  原生属性：el.attrs = [{ name, value, start, end }]，或者一些必须使用 props 的属性，变成了：
+  //  el.props = [{ name, value: true, start, end, dynamic }]
  */
 function processAttrs (el) {
   const list = el.attrsList
@@ -969,7 +1001,7 @@ function processAttrs (el) {
           checkForAliasModel(el, value)
         }
       }
-    } else {
+    } else {// 普通属性
       // literal attribute
       if (process.env.NODE_ENV !== 'production') {
         const res = parseText(value, delimiters)
@@ -986,6 +1018,7 @@ function processAttrs (el) {
       addAttr(el, name, JSON.stringify(value), list[i])
       // #6887 firefox doesn't update muted state if set via attribute
       // even immediately after element creation
+      // 火狐下的muted属性处理
       if (!el.component &&
           name === 'muted' &&
           platformMustUseProp(el.tag, el.attrsMap.type, name)) {
@@ -1034,6 +1067,7 @@ function makeAttrsMap (attrs: Array<Object>): Object {
 }
 
 // for script (e.g. type="x/template") or style, do not decode content
+// 判断是否为script或style节点（纯文本）
 function isTextTag (el): boolean {
   return el.tag === 'script' || el.tag === 'style'
 }

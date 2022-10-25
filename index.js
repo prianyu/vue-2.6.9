@@ -1,14 +1,10 @@
-
 const Name = {
-  template: `<div>
-              My name is <slot name="footer"></slot>
-              I'm <slot></slot> years old.
-            </div>`,
+  template: '<div> My name is <slot name="footer"></slot>Im <slot></slot> years old. </div>',
   name: 'name'
 }
 const Custom = {
   name: "custom",
-  data() {
+  data: function() {
     return {
       age: 20
     }
@@ -20,12 +16,9 @@ const Custom = {
   //               </template>
   //               {{age}}
   //            </name>`,
-  template: `<div>
-              {{age}}
-              <slot></slot>
-            </div>`,
+  template: '<div> {{age}}<slot></slot></div>',
   components: {
-    Name
+    Name: Name
   }
 }
 const age = 18
@@ -44,6 +37,7 @@ const person = Object.defineProperty({}, 'age', {
 
 
 const app = new Vue({
+  template:  `<div>test</a></div>`,
   data() {
     return {
       person,
@@ -59,13 +53,13 @@ const app = new Vue({
   },
   watch: {
     watcher: function() {
-      this.watcher = new Date()// 陷入了死循环
+      //this.watcher = new Date()// 陷入了死循环
     }
   }
   
 })
 app.$mount("#app")
-setTimeout(() => {
+setTimeout(function() {
   app.arr.push(4,5,6)
   app.watcher = new Date()
 }, 1000)
