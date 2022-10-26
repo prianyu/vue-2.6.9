@@ -149,7 +149,8 @@ export function parseHTML (html, options) {
           continue
         }
       }
-
+      // 走到这里说明没匹配到注释、doctype、开始标签、结束标签、条件注释等情况，
+      // 那么剩下的当作普通文本处理
       // 以下解析裸漏的普通文本
       let text, rest, next
       if (textEnd >= 0) {
@@ -181,7 +182,7 @@ export function parseHTML (html, options) {
         text = html.substring(0, textEnd)
       }
 
-      if (textEnd < 0) { // 找不到<,说明html就是一段纯文本
+      if (textEnd < 0) { // 找不到<,说明剩下的html就是一段纯文本，如template: "abcd"，template: "<div>纯文字"
         text = html
       }
 
@@ -224,12 +225,18 @@ export function parseHTML (html, options) {
     }
 
     // 处理结束了，html和last相等，说明经历完以上的逻辑后，html并没有发生任何的改变
-    // 此时就将整段html当作纯文本来处理
-    // 这是一种极端情况，即处理完标签后stack还有标签，但是却没有后续的处理
-    // 举例：<div></div><a
+    // 此时就将整段html当作纯文本来处理，如0<1<2，经过以上处理后html和last都会变为<2，这一部分则会被当作普通文本处理
     if (html === last) {
+      // 剩下的当作普通文本处理
       options.chars && options.chars(html)
       if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {
+        // 这是一种极端情况，用于处理不合法的html
+        // stack为空，说明了stack清理完了或者还没有压入根标签
+        // 走到这里了说明html === last是成立的，但是没有配到注释、标签、结束标签，同时text应该为空
+        // 以下代码都会触发此逻辑
+        // 1. template: "<1", 此时textEnd为0，stack为空，经过以上处理后html没有任何变化
+        // 2. template："<",此时textEnd为0，stack为空，经过以上处理后html没有任何变化
+        // 3. template: '<div></div><1', 此时stack被正常清空了，剩下的<1同情况1
         options.warn(`Mal-formatted tag at end of template: "${html}"`, { start: index + html.length })
       }
       break

@@ -37,10 +37,10 @@ const modifierRE = /\.[^.\]]+(?=[^\]]*$)/g // 修饰器的正则
 
 const slotRE = /^v-slot(:|$)|^#/ // 匹配v-slot标签，可以为v-slot、v-slot:xxx, #xxx这几种语法
 
-const lineBreakRE = /[\r\n]/
+const lineBreakRE = /[\r\n]/ // 换行符
 const whitespaceRE = /\s+/g
 
-const invalidAttributeRE = /[\s"'<>\/=]/
+const invalidAttributeRE = /[\s"'<>\/=]/ // 不合法的属性名称
 
 const decodeHTMLCached = cached(he.decode)
 
@@ -123,7 +123,7 @@ export function parse (
      */
   function closeElement (element) {
     trimEndingWhitespace(element) // 删除尾部的空白节点
-    // 处理整个元素
+    // 处理元素上各种属性
     if (!inVPre && !element.processed) {
       element = processElement(element, options)
     }
@@ -149,8 +149,8 @@ export function parse (
         )
       }
     }
-    // 有父节点
-    if (currentParent && !element.forbidden) {
+    // 有父节点且不是style和script标签
+    if (currentParent && !element.forbidden) { 
       // 当前元素有elseif或else条件，则判断其前一个兄弟元素是否有if条件
       // 有则添加条件，无则报错
       if (element.elseif || element.else) {
@@ -275,6 +275,7 @@ export function parse (
             return cumulated
           }, {})
         }
+        // 检查属性名的合法性
         attrs.forEach(attr => {
           if (invalidAttributeRE.test(attr.name)) {
             warn(
@@ -306,7 +307,7 @@ export function parse (
         element = preTransforms[i](element, options) || element
       }
 
-      if (!inVPre) { // 当前不在pre环境下，则解析pre指令
+      if (!inVPre) { // 当前不在v-pre环境下，则解析pre指令
         processPre(element)
         if (element.pre) { // 有v-pre指令则标记inVPre为true
           inVPre = true
@@ -321,7 +322,7 @@ export function parse (
         processRawAttrs(element)
       } else if (!element.processed) { // 元素还未处理，则处理各种指令
         // structural directives
-        processFor(element) // 处理v-for指令
+        processFor(element) // 处理v-for指令 
         processIf(element) // 处理v-if指令
         processOnce(element) // 处理v-once指令 
       }
@@ -356,10 +357,13 @@ export function parse (
       if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
         element.end = end
       }
+      // 对标签做闭合处理
       closeElement(element)
     },
 
-    chars (text: string, start: number, end: number) { // @supense
+    chars (text: string, start: number, end: number) { 
+      // 说明解析到了一个在根节点以外或者直接被作为根节点的文本节点
+      // 这种情况不处理
       if (!currentParent) {
         if (process.env.NODE_ENV !== 'production') {
           if (text === template) { // 传递了文本节点作为template
@@ -377,6 +381,9 @@ export function parse (
         return
       }
       // IE textarea placeholder bug
+      // IE textarea标签的placeholder属性的bug
+      // IE在textarea的内容为空时，在template中会将placeholder属性的值作为文本填充在textarea中
+      // Vue忽略这个值，但这会导致在IE下产生bug，就是当placeholder和textarea初始值一样时无法正常保留内容
       /* istanbul ignore if */
       if (isIE &&
         currentParent.tag === 'textarea' &&
@@ -386,30 +393,44 @@ export function parse (
       }
       // 当前父节点的子节点集合
       const children = currentParent.children
-      if (inPre || text.trim()) { // 如果是style或script标签则保留原内容，否则做内容编码
+      if (inPre || text.trim()) { // 如果当前在文本在pre标签内或者内容不是纯空白字符
+        // 如果是style或script标签则保留原内容，否则做内容编码
         text = isTextTag(currentParent) ? text : decodeHTMLCached(text)
-      } else if (!children.length) {// @suspense
+      } else if (!children.length) {// 走到这里说明text只包含空白的字符，如果其前面没有兄弟元素，则直接移除空白的内容
         // remove the whitespace-only node right after an opening tag
         text = ''
-      } else if (whitespaceOption) {
+      } else if (whitespaceOption) { // 将多个空格压缩为一个空格或者替换为空白符
         if (whitespaceOption === 'condense') {
           // in condense mode, remove the whitespace node if it contains
           // line break, otherwise condense to a single space
+          // 在压缩模式下，如果空白节点包含换行符，则将其删除，否则压缩为单个空格
           text = lineBreakRE.test(text) ? '' : ' '
         } else {
           text = ' '
         }
       } else {
-        text = preserveWhitespace ? ' ' : ''
+        text = preserveWhitespace ? ' ' : '' // 保留一个空格
       }
+      // text仍有内容
       if (text) {
         if (!inPre && whitespaceOption === 'condense') {
+          // 将连续的空格压缩为单个空格
           // condense consecutive whitespaces into single space
           text = text.replace(whitespaceRE, ' ')
         }
         let res
         let child: ?ASTNode
-        if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
+        // 对文本进行解析，会解析出插值表达式、过滤器以及普通文本，最终会返回一段用于执行的代码
+        //以abc{{name|filter(1,2)}},def{{age}}为例，最终返回的res为
+        // "abc"+_s(_f("filter")(name,1,2))+",def"+_s(age)
+        // tokens为：
+        // [
+        //   "abc",
+        //   {"@binding": "_f(\"filter\")(name,1,2)"},
+        //   ",def",
+        //   {"@binding": "age"},
+        // ]
+        if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) { // 包含插值表达式
           child = {
             type: 2,
             expression: res.expression,
@@ -417,12 +438,13 @@ export function parse (
             text
           }
         } else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
+          // 非空白文本或者上一个节点非空白文本则创建普通文本节点
           child = {
             type: 3,
             text
           }
         }
-        if (child) {
+        if (child) { // 往父元素添加该文本节点
           if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
             child.start = start
             child.end = end
@@ -482,24 +504,30 @@ function processRawAttrs (el) {
 }
 
 
-// 处理元素
+// 处理元素的各种属性
+// key，ref,slot,is,inline-template以及其他绑定属性和静态属性
 export function processElement (
   element: ASTElement,
   options: CompilerOptions
 ) {
-  processKey(element) // 处理key属性
+  processKey(element) // 处理key属性， 添加el.key，并作合法性校验
 
   // determine whether this is a plain element after
   // removing structural attributes
-  // 移除完结构性的属性后，判定是否为普通的奥元素
+  // 走到这里，v-if,v-for,v-once等结构性相关的属性已经处理完毕
+  // 创建的element里也有了attrsList等属性
+  // 移除完结构性的属性后，判定是否为普通的元素
+  // 没有key，scopedSlots，attrsList为空则标记为普通元素
   element.plain = (
     !element.key &&
     !element.scopedSlots &&
     !element.attrsList.length
   )
 
-  processRef(element) // 处理ref属性
-  processSlotContent(element) // 处理作为插槽传递给组件的内容
+  processRef(element) // 处理ref属性，增加ref和refInFor属性
+  // 处理作为插槽传递给组件的内容，处理旧语法的slot属性和slot-scope属性以及新语法的v-slot指令
+  // 处理后会增加slotTarget、slotTargetDynamic、slotScope、scopedSlots（用于存放子元素）
+  processSlotContent(element) 
   processSlotOutlet(element) // 元素为slot时，处理它（名称）
   processComponent(element) // 处理is属性、inline-template属性等
   // 后置处理
@@ -522,10 +550,12 @@ export function processElement (
 }
 
 // 处理key属性
+// 添加key属性
+// template不能添加key，transition-group的子元素不能使用index作为key
 function processKey (el) {
   const exp = getBindingAttr(el, 'key')
   if (exp) {
-    // template不能添加key，transition-group不能使用index作为key
+
     if (process.env.NODE_ENV !== 'production') {
       if (el.tag === 'template') {
         warn(
@@ -551,6 +581,7 @@ function processKey (el) {
 }
 
 // 处理ref属性
+// 添加ref和refInfo
 function processRef (el) {
   const ref = getBindingAttr(el, 'ref')
   if (ref) {
@@ -560,10 +591,11 @@ function processRef (el) {
 }
 
 // 处理v-for指令
+// 主要解析出被遍历的对象、遍历对象的别名、key以及index，最后拓展至el
 export function processFor (el: ASTElement) {
   let exp // v-for的值
   if ((exp = getAndRemoveAttr(el, 'v-for'))) {
-    const res = parseFor(exp) // 解析v-for为对象
+    const res = parseFor(exp) // 解析v-for为对象 {for, alias, iterator1, iterator2}
     if (res) {
       extend(el, res) // 将v-for解析后的对象拓展至el
     } else if (process.env.NODE_ENV !== 'production') {
@@ -605,10 +637,13 @@ export function parseFor (exp: string): ?ForParseResult {
   } else { // 匹配不到迭代器，只有别名
     res.alias = alias
   }
-  return res
+  return res // {for, alias, iterator1, iterator2}
 }
 
 // 处理if指令
+// 添加if、else、elseif属性，其中if会保留条件，else和elseif只是标记为true
+// 在关闭标签的时候会对else和elseif做合法性校验，并将实际的条件添加至ifConditions
+// 添加ifConditions数组属性，用于存放所有的if/else/elseif条件
 function processIf (el) {
   const exp = getAndRemoveAttr(el, 'v-if') // 获取if指令的值
   if (exp) {
@@ -631,7 +666,7 @@ function processIf (el) {
 
 // 处理else和elseif条件
 function processIfConditions (el, parent) {
-  // 获取前一个兄弟元素
+  // 获取上一个非文本兄弟元素
   const prev = findPrevElement(parent.children)
   // 如果前一个兄弟元素有if条件，则给其添加elseif条件
   if (prev && prev.if) { 
@@ -639,7 +674,9 @@ function processIfConditions (el, parent) {
       exp: el.elseif,
       block: el
     })
-  } else if (process.env.NODE_ENV !== 'production') { // 没有具有if条件的前兄弟元素，则条件无效
+  } else if (process.env.NODE_ENV !== 'production') { 
+    // 没有具有if条件的前兄弟元素，则条件无效
+    // 此时可能也是else和if之间的多了其他元素引起
     warn(
       `v-${el.elseif ? ('else-if="' + el.elseif + '"') : 'else'} ` +
       `used on element <${el.tag}> without corresponding v-if.`,
@@ -654,7 +691,7 @@ function findPrevElement (children: Array<any>): ASTElement | void {
   while (i--) {
     if (children[i].type === 1) {
       return children[i]
-    } else {
+    } else { // 放置在if和else中间的普通文本将会被删除掉
       if (process.env.NODE_ENV !== 'production' && children[i].text !== ' ') {
         warn(
           `text "${children[i].text.trim()}" between v-if and v-else(-if) ` +
@@ -675,7 +712,7 @@ export function addIfCondition (el: ASTElement, condition: ASTIfCondition) {
   el.ifConditions.push(condition)
 }
 
-// 处理v-once指令
+// 处理v-once指令，有该指令的标记once为true
 function processOnce (el) {
   const once = getAndRemoveAttr(el, 'v-once')
   if (once != null) {
@@ -686,6 +723,8 @@ function processOnce (el) {
 // handle content being passed to a component as slot,
 // e.g. <template slot="xxx">, <div slot-scope="xxx">
 // 处理作为插槽传递给组件的内容
+// 处理后会增加slotTarget、slotTargetDynamic、slotScope、scopedSlots
+// 创建template标签存放插槽子元素
 function processSlotContent (el) {
   // 处理旧的slot-scope和scope指令语法
   let slotScope
@@ -737,7 +776,7 @@ function processSlotContent (el) {
   if (process.env.NEW_SLOT_SYNTAX) {
     if (el.tag === 'template') { // template上的v-slot指令
       // v-slot on <template>
-      // 删除并返回为slot指令的属性，有v-slot、v-slot:xxx, #xx三种语法
+      // 删除并返回作为slot指令的属性，有v-slot、v-slot:xxx, #xx三种语法
       const slotBinding = getAndRemoveAttrByRegex(el, slotRE)
       if (slotBinding) {
         if (process.env.NODE_ENV !== 'production') {
@@ -770,19 +809,19 @@ function processSlotContent (el) {
       const slotBinding = getAndRemoveAttrByRegex(el, slotRE)
       if (slotBinding) {
         if (process.env.NODE_ENV !== 'production') {
-          if (!maybeComponent(el)) {
+          if (!maybeComponent(el)) { //只能用于template与只有默认插槽的组件
             warn(
               `v-slot can only be used on components or <template>.`,
               slotBinding
             )
           }
-          if (el.slotScope || el.slotTarget) {
+          if (el.slotScope || el.slotTarget) { // 新旧语法混用
             warn(
               `Unexpected mixed usage of different slot syntaxes.`,
               el
             )
           }
-          if (el.scopedSlots) {
+          if (el.scopedSlots) { // 存在其他命名插槽，则默认插槽也只能用在template标签上
             warn(
               `To avoid scope ambiguity, the default slot should also use ` +
               `<template> syntax when there are other named slots.`,
@@ -792,8 +831,8 @@ function processSlotContent (el) {
         }
         // add the component's children to its default slot
         // 将component的内容添加至其默认插槽
-        const slots = el.scopedSlots || (el.scopedSlots = {})
-        const { name, dynamic } = getSlotName(slotBinding) // 名称
+        const slots = el.scopedSlots || (el.scopedSlots = {}) // 增加scopedSlots属性
+        const { name, dynamic } = getSlotName(slotBinding) // 提取名称
         const slotContainer = slots[name] = createASTElement('template', [], el) // 创建template的Ast
         slotContainer.slotTarget = name 
         slotContainer.slotTargetDynamic = dynamic

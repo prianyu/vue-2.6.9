@@ -37,12 +37,14 @@ const person = Object.defineProperty({}, 'age', {
 
 
 const app = new Vue({
-  template:  `<div>test</a></div>`,
+  // template:  `<div></div><1`, // “Mal-formatted tag",
+  // template:  `<div>纯文字`,
   data() {
     return {
       person,
       aa: "12",
       name: "name",
+      age: 18,
       arr: [1,2,3],
       watcher: new Date()
     }
@@ -54,6 +56,14 @@ const app = new Vue({
   watch: {
     watcher: function() {
       //this.watcher = new Date()// 陷入了死循环
+    }
+  },
+  filters: {
+    filter: function() {
+
+    },
+    test() {
+
     }
   }
   
