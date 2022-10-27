@@ -344,7 +344,7 @@ export function parseHTML (html, options) {
     const attrs = new Array(l)
     for (let i = 0; i < l; i++) {
       const args = match.attrs[i]
-      const value = args[3] || args[4] || args[5] || '' // 获取属性值
+      const value = args[3] || args[4] || args[5] || '' // 获取属性值，默认是''，也就是只要存在属性就不会为undefined或者null
       // 判断是否解码属性内的换行符
       const shouldDecodeNewlines = tagName === 'a' && args[1] === 'href'
         ? options.shouldDecodeNewlinesForHref
@@ -353,6 +353,7 @@ export function parseHTML (html, options) {
         name: args[1], // 属性名
         value: decodeAttr(value, shouldDecodeNewlines) // 属性值进行解码
       }
+      console.log(attrs[i])
       if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
         attrs[i].start = args.start + args[0].match(/^\s*/).length
         attrs[i].end = args.end

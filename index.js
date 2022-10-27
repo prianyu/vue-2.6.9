@@ -1,26 +1,6 @@
-const Name = {
-  template: '<div> My name is <slot name="footer"></slot>Im <slot></slot> years old. </div>',
-  name: 'name'
-}
-const Custom = {
-  name: "custom",
-  data: function() {
-    return {
-      age: 20
-    }
-  },
-  // template: `<name>
-  //               <template v-slot:footer>
-  //                 Yu
-  //                 <slot name="header"></slot>
-  //               </template>
-  //               {{age}}
-  //            </name>`,
-  template: '<div> {{age}}<slot></slot></div>',
-  components: {
-    Name: Name
-  }
-}
+
+// -----------自带getter/setter的属性响应式测试用例
+/*
 const age = 18
 const person = Object.defineProperty({}, 'age', {
   enumerable: true, //可枚举
@@ -34,43 +14,87 @@ const person = Object.defineProperty({}, 'age', {
   //   age = val
   // }
 })
-
-
 const app = new Vue({
-  // template:  `<div></div><1`, // “Mal-formatted tag",
-  // template:  `<div>纯文字`,
   data() {
     return {
       person,
-      aa: "12",
-      name: "name",
-      age: 18,
-      arr: [1,2,3],
+      age
+    }
+  }
+})
+*/
+
+
+// --------模板解析测试用例
+/** 
+const app = new Vue({
+   // template:  `<div></div><1`, // “Mal-formatted tag",
+  template:  `<div>纯文字`,
+})
+*/
+
+// -------watcher死循环测试用例
+/**
+const app = new Vue({
+  data() {
+    return {
       watcher: new Date()
     }
   },
-  components: {
-    Custom,
-    Name
-  },
-  watch: {
-    watcher: function() {
-      //this.watcher = new Date()// 陷入了死循环
-    }
+  watcher: function() {
+    this.watcher = new Date()
+  }
+})
+ */
+
+//--------过滤器测试用例
+/**
+const app = new Vue({
+  data() {
+    return {
+      name: "foo", 
+      age: 15
+    }  
   },
   filters: {
-    filter: function() {
+    filter: function(a) {
+      return a.toUpperCase()
+    }  
+  }
+})
+ */
 
-    },
-    test() {
+// 组件上直接使用v-slot测试用例
+const Foo = {
+  template:`
+    <div>
+      <h1>Foo</h1>
+      <slot param="param"></slot>
+      <slot name="footer"></slot>
+      <slot name="test" aa="test"></slot>
+    </div>`
+}
+const Bar = {
+  template: `
+    <div>
+      <h1>Bar</h1>
+      <slot test="param"></slot>
+    </div>`
+}
+const Baz = {
+  template: `<h1>Baz<slot></slot></h1>`
+}
+const app = new Vue({
+  data() {
+    return {
 
     }
-  }
-  
+  },
+  components: {
+    Foo,
+    Bar,
+    Baz
+  }  
 })
+
 app.$mount("#app")
-setTimeout(function() {
-  app.arr.push(4,5,6)
-  app.watcher = new Date()
-}, 1000)
-console.log(app)

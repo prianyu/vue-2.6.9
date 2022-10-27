@@ -119,11 +119,12 @@ export function parse (
      * 主要做了 3 件事：
      *   1、如果元素没有被处理过，即 el.processed 为 false，则调用 processElement 方法处理节点上的众多属性
      *   2、让自己和父元素产生关系，将自己放到父元素的 children 数组中，并设置自己的 parent 属性为 currentParent
-     *   3、设置自己的子元素，将自己所有非插槽的子元素放到自己的 children 数组中
+     *   3、设置自己的子元素，将自己所有非提供给作用域插槽的子元素放到自己的 children 数组中
      */
   function closeElement (element) {
+    console.log(element.tag)
     trimEndingWhitespace(element) // 删除尾部的空白节点
-    // 处理元素上各种属性
+    // 处理元素上众多属性
     if (!inVPre && !element.processed) {
       element = processElement(element, options)
     }
@@ -156,15 +157,18 @@ export function parse (
       if (element.elseif || element.else) {
         processIfConditions(element, currentParent)
       } else {
-        if (element.slotScope) { // 有作用域插槽
+        if (element.slotScope) { // 作为插槽传递给某个组件
           // scoped slot
           // keep it in the children list so that v-else(-if) conditions can
           // find it as the prev node.
           // 将作用域插槽保存在子节点列表中，以便v-else（-if）条件可以将其作为prev节点
           // @suspense
-          const name = element.slotTarget || '"default"'// 作用域插槽的name属性
+          // #mark0
+          const name = element.slotTarget || '"default"'// 插槽的name属性
+          // 根据名字将当前元素添加至父元素的scopedSlots中
           ;(currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
         }
+        // 绑定父子关系
         currentParent.children.push(element) // 将当前元素放入其父元素
         element.parent = currentParent // 当前元素的parent指向父元素
       }
@@ -172,7 +176,8 @@ export function parse (
 
     // final children cleanup
     // filter out scoped slots
-    // 过滤掉子元素中的作用域插槽
+    // 过滤掉子元素中的作用域插槽，并将其他的子元素放到自己的children中
+    // 因为具有slotScope属性的子元素已经被放到element.scopedSlots[name]中去了
     element.children = element.children.filter(c => !(c: any).slotScope)
     // remove trailing whitespace node again
     trimEndingWhitespace(element)// 删除尾部的空白节点
@@ -506,6 +511,10 @@ function processRawAttrs (el) {
 
 // 处理元素的各种属性
 // key，ref,slot,is,inline-template以及其他绑定属性和静态属性
+// 处理插槽、自闭合的slot标签、动态组件
+// 处理style、class
+// 处理后element增加属性：key/ref/refInfo/scopedSlot/slotName/component/inlineTemplate/staticClass/
+// bindingClass/staticStyle/bindingStyle/attrs
 export function processElement (
   element: ASTElement,
   options: CompilerOptions
@@ -515,7 +524,7 @@ export function processElement (
   // determine whether this is a plain element after
   // removing structural attributes
   // 走到这里，v-if,v-for,v-once等结构性相关的属性已经处理完毕
-  // 创建的element里也有了attrsList等属性
+  // 创建的element里也有了attrsList、children等属性
   // 移除完结构性的属性后，判定是否为普通的元素
   // 没有key，scopedSlots，attrsList为空则标记为普通元素
   element.plain = (
@@ -526,9 +535,10 @@ export function processElement (
 
   processRef(element) // 处理ref属性，增加ref和refInFor属性
   // 处理作为插槽传递给组件的内容，处理旧语法的slot属性和slot-scope属性以及新语法的v-slot指令
-  // 处理后会增加slotTarget、slotTargetDynamic、slotScope、scopedSlots（用于存放子元素）
+  // 得到插槽名称、是否为动态插槽、作用域插槽的值以及插槽中给所有的子元素，子元素被放到插槽对象的children属性中
+  // 处理后会增加slotTarget、slotTargetDynamic、slotScope、scopedSlots（用于存放子元素）等属性
   processSlotContent(element) 
-  processSlotOutlet(element) // 元素为slot时，处理它（名称）
+  processSlotOutlet(element) // 元素为slot时，检测其是否有key属性
   processComponent(element) // 处理is属性、inline-template属性等
   // 后置处理
   // 为 element 对象分别执行 class、style、model 模块中的 transformNode 方法
@@ -724,7 +734,18 @@ function processOnce (el) {
 // e.g. <template slot="xxx">, <div slot-scope="xxx">
 // 处理作为插槽传递给组件的内容
 // 处理后会增加slotTarget、slotTargetDynamic、slotScope、scopedSlots
-// 创建template标签存放插槽子元素
+// 对于旧语法的slot-scope属性，template和标签、组件都会增加slotScope属性，其值就是slot-scope的值
+// 对于旧语法的slot属性，会往元素上添加el.slotTarget属性（其值为slot属性的值或"default"）以及slotTargetDynamic属性
+// 对于新语法的v-slot指令，如果是template标签，会增加slotTarget、slotTargetDynamic、slotScope，同时会覆盖旧语法生成的属性值
+// 对于非template标签，当作只有默认插槽处理，会动态创建一个template元素，并且在template元素上新增slotTarget、slotTargetDynamic属性
+// 同时还会增加el.scopedSlots[name]属性，并将el.children的组元素放置到scopedSlots[name].children中，并清空el.children
+// 经过以上处理后，有三类情况：
+// 1. el为template元素，具有children,slotTarget, slotTargetDynamic,slotScope(默认为__empty__)属性
+// 2. el为非template元素，具有children,slotTarget, slotTargetDynamic,slotScope(值为slot-scope旧语法的值)属性
+// 3. el为自定义组件，没有slotScope属性具有scopedSlots属性，里面的default元素存放着动态生成的template元素，template元素slotTarget、slotTargetDynamic、children属性
+// 1和2最后关闭时会添加至父元素的scopedSlots[slotTarget]中，而3因为没有slotScope属性，不会做此操作，见"#mark0"处的代码
+// #mark1
+
 function processSlotContent (el) {
   // 处理旧的slot-scope和scope指令语法
   let slotScope
@@ -742,8 +763,8 @@ function processSlotContent (el) {
         true
       )
     }
-    el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope') // 获取template的slot-scoped属性的内容
-  } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) { // 非template元素具有slot-scoped属性
+    el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope') // 获取template的slot-scope属性的内容
+  } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) { // 非template元素具有slot-scope属性
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production' && el.attrsMap['v-for']) {
       warn(
@@ -754,33 +775,37 @@ function processSlotContent (el) {
         true
       )
     }
-    el.slotScope = slotScope // 非template元素的sltot-scope属性的内容
+    el.slotScope = slotScope // 非template元素的slot-scope属性的内容
   }
+  // ----------经过以上处理，el（template标签或者组件标签）可能有了slotScope属性
 
   // slot="xxx"
-  // 旧语法中的slot属性
+  // 具名插槽，获取作为插槽组件传进去的插槽名称
+  //  这里处理旧语法中的slot属性
   const slotTarget = getBindingAttr(el, 'slot') // 获取slot绑定属性的值
   if (slotTarget) {
-    el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget
+    el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget // 插槽名称
     el.slotTargetDynamic = !!(el.attrsMap[':slot'] || el.attrsMap['v-bind:slot'])// 标记是否有动态的slot绑定属性
     // preserve slot as an attribute for native shadow DOM compat
     // only for non-scoped slots.
-    //仅为非作用域插槽保留slot作为本地阴影DOM compat的属性。
+    //仅为非作用域插槽保留slot属性，作为原生shadow DOM 的兼容。
+    // 原生的shadow DOM中有个slot标签，外部可以通过slot属性将自身插入到slot标签对应的位置
     if (el.tag !== 'template' && !el.slotScope) {
       addAttr(el, 'slot', slotTarget, getRawBindingAttr(el, 'slot'))
     }
   }
+  // ---------经过以上处理，el上有了slotTarget和slotTargetDynamic属性，可能有slot属性
 
   // 2.6 v-slot syntax
-  // 2.6+ slot新语法的处理
-  if (process.env.NEW_SLOT_SYNTAX) {
+  // 2.6+ slot新语法的处理吗v-slot
+  if (process.env.NEW_SLOT_SYNTAX) { // 支持新的语法
     if (el.tag === 'template') { // template上的v-slot指令
       // v-slot on <template>
       // 删除并返回作为slot指令的属性，有v-slot、v-slot:xxx, #xx三种语法
       const slotBinding = getAndRemoveAttrByRegex(el, slotRE)
       if (slotBinding) {
         if (process.env.NODE_ENV !== 'production') {
-          if (el.slotTarget || el.slotScope) { // 混用了新旧语法的slot指令
+          if (el.slotTarget || el.slotScope) { // 新旧语法混用，即混用了slot属性和v-slot指令
             warn(
               `Unexpected mixed usage of different slot syntaxes.`,
               el
@@ -796,14 +821,14 @@ function processSlotContent (el) {
           }
         }
         const { name, dynamic } = getSlotName(slotBinding) // 获取名称
-        el.slotTarget = name // 名称
+        el.slotTarget = name // 插槽名称
         el.slotTargetDynamic = dynamic // 是否为动态指令参数
-        // 指令传了值则作为作用域插槽
-        el.slotScope = slotBinding.value || emptySlotScopeToken // force it into a scoped slot for perf
+        // 指令传了值则作为作用域插槽的参数名称
+        el.slotScope = slotBinding.value || emptySlotScopeToken // （__empty__）force it into a scoped slot for perf
       }
     } else { // 非template标签
       // v-slot on component, denotes default slot
-      // 组件上的v-slot表示默认插槽
+      // 组件上的v-slot表示只有默认插槽
       // v-slot是只能用在template标签上的，但是有一种情况例外，就是插槽里只有默认插槽一个
       // 那么可以把v-slot放在组件上
       const slotBinding = getAndRemoveAttrByRegex(el, slotRE)
@@ -822,6 +847,8 @@ function processSlotContent (el) {
             )
           }
           if (el.scopedSlots) { // 存在其他命名插槽，则默认插槽也只能用在template标签上
+            // 当存在多个插槽时，将默认插槽放在组件上是会引起作用域不明确的，
+            // 此时，默认插槽也只能放在template上
             warn(
               `To avoid scope ambiguity, the default slot should also use ` +
               `<template> syntax when there are other named slots.`,
@@ -830,22 +857,43 @@ function processSlotContent (el) {
           }
         }
         // add the component's children to its default slot
-        // 将component的内容添加至其默认插槽
-        const slots = el.scopedSlots || (el.scopedSlots = {}) // 增加scopedSlots属性
+        // 由于只有仅有一个默认插槽的情况下才可以把v-slot放到组件上，
+        // 所以等价于于组件内部有一个具有默认插槽的template标签，
+        // 那么就自动创建一个template容器标签，把当前组件的子元素都放置到这个template标签内，
+        // 作为默认插槽的内容
+        // el.scopedSlots[name]会引用着这个template容器，而template容器会存放着插槽的属性以及子元素
+        const slots = el.scopedSlots || (el.scopedSlots = {}) // 给当前组件增加scopedSlots属性
         const { name, dynamic } = getSlotName(slotBinding) // 提取名称
         const slotContainer = slots[name] = createASTElement('template', [], el) // 创建template的Ast
         slotContainer.slotTarget = name 
         slotContainer.slotTargetDynamic = dynamic
-        // 绑定父子关系
+        // 将子组件遍历放到template容器的children属性上，绑定父子关系
+        // 这里仅将不具有slotScope属性的子元素绑定这个父子关系
+        // 也就是slotContainer只会存放非作用插槽 @suspense
+        /**
+         * <foo v-slot="item">
+         *  <div>1</div>
+         *  <baz>2</baz>
+         *  <template v-slot="param">{{param}}</template>
+         *  <bar v-slot="param2">{{param2}}</bar>
+         *  <span slot="name"></span>
+         * </foo>
+         * 以上代码经过本函数处理后，template本身都会具有slotScope属性，其值为param
+         * 并且template关闭处理完毕后会将自身赋值给父元素（foo组件）的scopedSlots['"default"']上面
+         * 而bar组件因为bar作为默认插槽，它本身不会添加slotScope属性，但是会有默认的template容器
+         * 当闭合foo组件时，由于本身也具备v-slot指令，在检查时会发现自身的scopedSlots不为空，所以会“报默认插槽也只能放在template上”的错误提醒
+         * 经过遍历和过滤，template子元素不会放置到slotContainer.children中
+         */
         slotContainer.children = el.children.filter((c: any) => {
           if (!c.slotScope) {
             c.parent = slotContainer
             return true
           }
         })
-        slotContainer.slotScope = slotBinding.value || emptySlotScopeToken // 作用域插槽
+        slotContainer.slotScope = slotBinding.value || emptySlotScopeToken // 设置作用域插槽名称
         // remove children as they are returned from scopedSlots now
-        el.children = [] // 将children移除，因为可以从scopedSlots获取了
+        // 将children移除，因为可以从template的scopedSlots获取了
+        el.children = [] 
         // mark el non-plain so data gets generated
         el.plain = false // 标记为非普通元素
       }
@@ -874,7 +922,7 @@ function getSlotName (binding) {
 }
 
 // handle <slot/> outlets
-// 处理slot元素
+// 处理自闭合的slot元素
 function processSlotOutlet (el) {
   if (el.tag === 'slot') {
     el.slotName = getBindingAttr(el, 'name') // 获取名称
@@ -891,6 +939,8 @@ function processSlotOutlet (el) {
 }
 
 // 处理component
+// 如果有is属性，添加component属性指向is的值
+// 如果有inline-template，则将inline-template标记为true
 function processComponent (el) {
   let binding
   if ((binding = getBindingAttr(el, 'is'))) { // 是否有is属性，有的话添加component属性执行对应的组件名称
