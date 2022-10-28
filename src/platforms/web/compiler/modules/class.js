@@ -9,10 +9,11 @@ import {
 
 function transformNode (el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
-  const staticClass = getAndRemoveAttr(el, 'class')
+  const staticClass = getAndRemoveAttr(el, 'class') // 获取class属性
   if (process.env.NODE_ENV !== 'production' && staticClass) {
-    const res = parseText(staticClass, options.delimiters)
+    const res = parseText(staticClass, options.delimiters) // 使用了模板语法
     if (res) {
+      // 提示使用动态绑定的语法
       warn(
         `class="${staticClass}": ` +
         'Interpolation inside attributes has been removed. ' +
@@ -23,11 +24,12 @@ function transformNode (el: ASTElement, options: CompilerOptions) {
     }
   }
   if (staticClass) {
-    el.staticClass = JSON.stringify(staticClass)
+    el.staticClass = JSON.stringify(staticClass) // 如"a b"
   }
+  // 获取动态的class属性
   const classBinding = getBindingAttr(el, 'class', false /* getStatic */)
   if (classBinding) {
-    el.classBinding = classBinding
+    el.classBinding = classBinding // 如 {ok: ok}
   }
 }
 

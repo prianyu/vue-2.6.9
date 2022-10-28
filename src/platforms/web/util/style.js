@@ -1,11 +1,14 @@
 /* @flow */
 
 import { cached, extend, toObject } from 'shared/util'
-
+// 解析style字符串，转为对象形式
+// 如 ”border: 1px solid red; color: red;"转为
+// {border: "1px solid red", color: 'red'}
 export const parseStyleText = cached(function (cssText) {
   const res = {}
   const listDelimiter = /;(?![^(]*\))/g
   const propertyDelimiter = /:(.+)/
+  // 将style拆分成数组后再转成数组
   cssText.split(listDelimiter).forEach(function (item) {
     if (item) {
       const tmp = item.split(propertyDelimiter)

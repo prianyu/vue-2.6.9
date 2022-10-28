@@ -45,7 +45,6 @@ export function parseText (
     // tag token
     // 解析插值表达式
     const exp = parseFilters(match[1].trim()) // 解析过滤器，得到_f("filter")(name,1,2)；解析到age的时候没有过滤器，结果是“age”
-    debugger
     tokens.push(`_s(${exp})`) // 生成执行_s函数的字符串，压入tokens：_s(_f("filter")(name,1,2))
     rawTokens.push({ '@binding': exp }) // 压入{@binding: '_f("filter")(name,1,2)'}
     lastIndex = index + match[0].length // 更新lastIndex

@@ -29,14 +29,24 @@
     <div v-else="name">else</div> -->
 
     <!-- 组件使用v-slot测试用例 -->
-    <foo>
+    <foo class="a b" :class="{ok: ok}">
       <!-- <div checked>1</div> -->
       <baz>2</baz>
       <template v-slot="param">{{param}}-</template>
       <bar v-slot="param2">{{param2}}</bar>
       <span slot="footer">footer</span>
     </foo>
+    <pre id="pre" style="background: red;">
+
+
+test
+    sdgs</pre>
   </div>
+  <pre id="pre" style="background: red;">
+
+      
+    test
+        sdgs</pre>
   <script src="./dist/vue.js"></script>
   <script src="./index.js"></script>
 </body>

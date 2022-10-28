@@ -74,9 +74,9 @@ Vue.prototype.$mount = function (
       // 将template模板编译后会得到render, staticRenderFns两个函数，分别存在vm.$options上面
       const { render, staticRenderFns } = compileToFunctions(template, {
         outputSourceRange: process.env.NODE_ENV !== 'production',
-        shouldDecodeNewlines, 
-        shouldDecodeNewlinesForHref,
-        delimiters: options.delimiters, // 插值表达式分隔符
+        shouldDecodeNewlines,  // 是否对属性值的换行符做解码处理
+        shouldDecodeNewlinesForHref, // 是否对a标签的href属性值中的换行符做解码处理
+        delimiters: options.delimiters, // 插值表达式定界符
         comments: options.comments // 是否保留注释
       }, this)
       options.render = render

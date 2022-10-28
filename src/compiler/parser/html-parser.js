@@ -43,9 +43,19 @@ const encodedAttr = /&(?:lt|gt|quot|amp|#39);/g
 const encodedAttrWithNewLines = /&(?:lt|gt|quot|amp|#39|#10|#9);/g
 
 // #5992
+// 因为一些历史原因，有些元素具有超出了内容模型限制的额外限制
+// 比如pre和textarea两个标签是允许以一个空行开头的，但是它应该被忽略，不应该影响pre和textarea的解析，如下两个写法是等效的：
+// <pre>test</pre>和
+//<pre>
+//   test
+// </pre>
+// 详细见此规范：https://html.spec.whatwg.org/multipage/syntax.html#element-restrictions
+// 如果标签本身内容想以换行符开头，那么需要输入两个换行符才可以
+// 但是Vue一开始在处理时并没有遵循这个规范，所以会导致页面闪烁（加载时浏览器会忽略第一行，高度低，vue解析后没有忽略第一行，高度高）
+// 因此，针对textarea和pre标签，需要忽略第一个空白行
+// 由于浏览器其实在加载时就做了处理，Vue此处应该只对SSR做处理才对，但Vue针对浏览器的情况也做了这个处理，所以这里其实还是一个bug
 const isIgnoreNewlineTag = makeMap('pre,textarea', true)
 const shouldIgnoreFirstNewline = (tag, html) => tag && isIgnoreNewlineTag(tag) && html[0] === '\n' //是否忽略第一行空白行
-
 function decodeAttr (value, shouldDecodeNewlines) {
   const re = shouldDecodeNewlines ? encodedAttrWithNewLines : encodedAttr
   return value.replace(re, match => decodingMap[match])
@@ -143,7 +153,7 @@ export function parseHTML (html, options) {
           // 进一步处理上一步得到结果，主要是对属性值做一些编码解码处理以及对不可相互嵌套的标签做处理，
           // 最后调用 options.start 方法生成AST并处理AST，抽象语法树的工作都是在这个 start 方法中做的
           handleStartTag(startTagMatch)
-          if (shouldIgnoreFirstNewline(startTagMatch.tagName, html)) {
+          if (shouldIgnoreFirstNewline(startTagMatch.tagName, html)) { // 对于pre，忽略第一个空白行
             advance(1)
           }
           continue
@@ -210,7 +220,7 @@ export function parseHTML (html, options) {
             .replace(/<!\--([\s\S]*?)-->/g, '$1') // #7298
             .replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1')
         }
-        if (shouldIgnoreFirstNewline(stackedTag, text)) {
+        if (shouldIgnoreFirstNewline(stackedTag, text)) { // 对于textarea，忽略第一个空白行
           text = text.slice(1)
         }
         if (options.chars) {
@@ -302,7 +312,7 @@ export function parseHTML (html, options) {
       // 这个处理与浏览器处理HTML的方式并不一致，浏览器的处理方式则是这一部分解析不到完整结束标签的内容会被
       // 当作普通文本来处理，所以这个是Vue的一个bug？
       // 举例：
-      // template: `<div a="1" b="c"`Vue会解析为空标签，浏览器则会解析没有内容标签放到html中
+      // template: `<div a="1" b="c"`Vue会解析为空标签，浏览器则会解析为没有内容标签放到html中
       if (end) {
         match.unarySlash = end[1] // 如果是/>，此时为/
         advance(end[0].length) // 重新调整html和index至开始标签结束的位置
@@ -353,7 +363,6 @@ export function parseHTML (html, options) {
         name: args[1], // 属性名
         value: decodeAttr(value, shouldDecodeNewlines) // 属性值进行解码
       }
-      console.log(attrs[i])
       if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
         attrs[i].start = args.start + args[0].match(/^\s*/).length
         attrs[i].end = args.end

@@ -90,10 +90,10 @@ export function parse (
   const isReservedTag = options.isReservedTag || no // 是否为保留标签（html+svg标签）
   maybeComponent = (el: ASTElement) => !!el.component || !isReservedTag(el.tag) // 是否为组件
 
-  // 从style、class、model几个modules中提取它们的transformNode、preTransformNode、postTransformNode方法
-  transforms = pluckModuleFunction(options.modules, 'transformNode')
-  preTransforms = pluckModuleFunction(options.modules, 'preTransformNode')
-  postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
+  // 从[class,style,model]几个modules中提取它们的transformNode、preTransformNode、postTransformNode方法
+  transforms = pluckModuleFunction(options.modules, 'transformNode')// [transformNode, transformNode], class和style
+  preTransforms = pluckModuleFunction(options.modules, 'preTransformNode') // [preTransformNode], model
+  postTransforms = pluckModuleFunction(options.modules, 'postTransformNode') // []
 
   delimiters = options.delimiters // 插值表达式定界符
 
@@ -122,9 +122,10 @@ export function parse (
      *   3、设置自己的子元素，将自己所有非提供给作用域插槽的子元素放到自己的 children 数组中
      */
   function closeElement (element) {
-    console.log(element.tag)
     trimEndingWhitespace(element) // 删除尾部的空白节点
     // 处理元素上众多属性
+    // 具有processed属性的标签已经执行过proceessElement, 入input[v-model]在做preTransformNode时已经做了处理
+    // 并且处理后，其processed会被标记为true
     if (!inVPre && !element.processed) {
       element = processElement(element, options)
     }
@@ -308,6 +309,7 @@ export function parse (
       }
 
       // apply pre-transforms 执行前置转化
+      // 这里只对具有动态type的input[v-model]进行转换，最终会转为按照不同type条件串起来的input元素
       for (let i = 0; i < preTransforms.length; i++) {
         element = preTransforms[i](element, options) || element
       }
@@ -325,7 +327,7 @@ export function parse (
       }
       if (inVPre) { // 具有v-pre指令，则处理原生的属性
         processRawAttrs(element)
-      } else if (!element.processed) { // 元素还未处理，则处理各种指令
+      } else if (!element.processed) { // 元素还未处理，则处理各种指令，input[v-model]在preTransformNode已经做了处理
         // structural directives
         processFor(element) // 处理v-for指令 
         processIf(element) // 处理v-if指令
@@ -540,7 +542,7 @@ export function processElement (
   processSlotContent(element) 
   processSlotOutlet(element) // 元素为slot时，检测其是否有key属性
   processComponent(element) // 处理is属性、inline-template属性等
-  // 后置处理
+  // 转换处理
   // 为 element 对象分别执行 class、style、model 模块中的 transformNode 方法
   // 不过 web 平台只有 class、style 模块有 transformNode 方法，分别用来处理 class 属性和 style 属性
   // 得到 el.staticStyle、 el.styleBinding、el.staticClass、el.classBinding

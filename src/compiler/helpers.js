@@ -11,7 +11,8 @@ export function baseWarn (msg: string, range?: Range) {
 }
 /* eslint-enable no-unused-vars */
 
-// 从modules中提取key并组成数组返回
+// 从modules中提取名称为key的函数并组成数组返回
+// [transformNode<Function>, transformNode<Function>]
 export function pluckModuleFunction<F: Function> (
   modules: ?Array<Object>,
   key: string

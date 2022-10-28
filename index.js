@@ -87,7 +87,7 @@ const Baz = {
 const app = new Vue({
   data() {
     return {
-
+      ok: true
     }
   },
   components: {
