@@ -9,6 +9,7 @@ type CompiledFunctionResult = {
   staticRenderFns: Array<Function>;
 };
 
+// 根据传入的代码字符串创建函数
 function createFunction (code, errors) {
   try {
     return new Function(code)
@@ -31,6 +32,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
     delete options.warn
 
     /* istanbul ignore if */
+    // 检查是否支持new Function
     if (process.env.NODE_ENV !== 'production') {
       // detect possible CSP restriction
       try {
@@ -49,6 +51,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
     }
 
     // check cache
+    // 缓存编译的结果
     const key = options.delimiters
       ? String(options.delimiters) + template
       : template
@@ -56,10 +59,11 @@ export function createCompileToFunctionFn (compile: Function): Function {
       return cache[key]
     }
 
-    // compile
+    // compile 执行compile函数，得到{render: ..., staticRenderFns: [...], ast, errors: ..., tips:...}对象
     const compiled = compile(template, options)
 
     // check compilation errors/tips
+    // 处理编译时错误和提醒
     if (process.env.NODE_ENV !== 'production') {
       if (compiled.errors && compiled.errors.length) {
         if (options.outputSourceRange) {
@@ -90,7 +94,9 @@ export function createCompileToFunctionFn (compile: Function): Function {
     // turn code into functions
     const res = {}
     const fnGenErrors = []
+    // 将render字符串转为render函数
     res.render = createFunction(compiled.render, fnGenErrors)
+    // 遍历staticRenderFns将其转为render函数
     res.staticRenderFns = compiled.staticRenderFns.map(code => {
       return createFunction(code, fnGenErrors)
     })
@@ -99,6 +105,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
     // this should only happen if there is a bug in the compiler itself.
     // mostly for codegen development use
     /* istanbul ignore if */
+    // 处理最终生成render函数的错误
     if (process.env.NODE_ENV !== 'production') {
       if ((!compiled.errors || !compiled.errors.length) && fnGenErrors.length) {
         warn(
@@ -109,6 +116,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
       }
     }
 
+    // 返回编译结果并缓存
     return (cache[key] = res)
   }
 }

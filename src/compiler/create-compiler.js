@@ -16,6 +16,8 @@ import { createCompileToFunctionFn } from './to-function'
 export function createCompilerCreator (baseCompile: Function): Function {
   // baseCompile和baseOptions被createCompiler中的compile函数闭包引用
   return function createCompiler (baseOptions: CompilerOptions) {
+
+    // 编译函数：结果为{render: ..., staticRenderFns: [...], ast, errors: ..., tips:...}
     function compile (
       template: string,
       options?: CompilerOptions
@@ -73,9 +75,16 @@ export function createCompilerCreator (baseCompile: Function): Function {
       finalOptions.warn = warn
 
       // 将最终得到的选项作为基础的编译器函数的选项
-      const compiled = baseCompile(template.trim(), finalOptions)
+      // 解析得到抽象语法树，再转为render函数的代码字符串
+      // {render: ..., staticRenderFns: [...], ast}
+      const compiled = baseCompile(template.trim(), finalOptions) 
       if (process.env.NODE_ENV !== 'production') {
-        detectErrors(compiled.ast, warn)
+        // 检查抽象语法树是否有不合法的地方
+        // 最终会将错误或者提醒存储在errors和tips上
+        // 主要检查了：v-on、v-for属性值、表达式等合法性
+        // 比如事件名不能为delete、typeof等一元操作符
+        // 表达式不能为javascript保留关键字等
+        detectErrors(compiled.ast, warn) //
       }
       // 将错误和提示信息做为编译器函数的执行结果属性返回
       compiled.errors = errors 
@@ -85,6 +94,7 @@ export function createCompilerCreator (baseCompile: Function): Function {
 
     return {
       compile,
+      // 将render函数字符串转化为可执行的render函数
       compileToFunctions: createCompileToFunctionFn(compile)
     }
   }

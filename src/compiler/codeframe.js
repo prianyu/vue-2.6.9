@@ -1,7 +1,7 @@
 /* @flow */
 
 const range = 2
-
+// 用于创建错误的展示结果
 export function generateCodeFrame (
   source: string,
   start: number = 0,

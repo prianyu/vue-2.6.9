@@ -87,7 +87,8 @@ const Baz = {
 const app = new Vue({
   data() {
     return {
-      ok: true
+      ok: true,
+      
     }
   },
   components: {
@@ -96,5 +97,4 @@ const app = new Vue({
     Baz
   }  
 })
-
 app.$mount("#app")

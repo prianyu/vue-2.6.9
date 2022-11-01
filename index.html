@@ -29,16 +29,50 @@
     <div v-else="name">else</div> -->
 
     <!-- 组件使用v-slot测试用例 -->
-    <foo class="a b" :class="{ok: ok}">
-      <!-- <div checked>1</div> -->
+    <!-- <foo class="a b" :class="{ok: ok}">
       <baz>2</baz>
       <template v-slot="param">{{param}}-</template>
       <bar v-slot="param2">{{param2}}</bar>
       <span slot="footer">footer</span>
-    </foo>
-    <pre id="pre" style="background: red;">
+    </foo> -->
+
+    <!-- ---------------------render函数生成测试用例 ---------------->
+    <!-- 实例   静态根节点 genStatic -->
+    <!-- <h1>我是一个静态的文本</h1> -->
+
+    <!-- 实例 v-once genOnce-->
+    <!-- <h1 v-once>genOnce</h1> -->
+
+    <!-- 实例 v-for genFor-->
+    <!-- <h1 v-for="(v, k, index) in list" key="k">{{k}}=>{{v}}</h1> -->
+
+    <!-- 实例 v-if  -->
+    <!-- <div v-if="name" v-once>a</div>
+    <div v-else-if="age" v-once>b</div>
+    <div v-else>c</div> -->
+    <!-- 实例 template -->
+    <!-- <template>
+      <div>1</div>
+      <div>2</div>
+      <div>3</div>
+    </template> -->
+
+    <!-- 实例 slot -->
+    <slot name="header" :param="123" v-bind="a" v-bind:user="b">
+      <div>default1</div>
+      <div>default2</div>
+    </slot>
 
 
+
+
+    <!-- <pre id="pre" style="background: red;"> -->
+    <!-- <div v-for="(item, key, index) in lists" key="key">{{item}}</div>
+     -->
+ 
+
+
+<!-- 
 test
     sdgs</pre>
   </div>
@@ -46,8 +80,9 @@ test
 
       
     test
-        sdgs</pre>
-  <script src="./dist/vue.js"></script>
+        sdgs</pre> -->
+  </div>
+  <script src="./dist/vue.js?version=2"></script>
   <script src="./index.js"></script>
 </body>
 </html>

@@ -22,13 +22,20 @@ export const createCompiler = createCompilerCreator(function baseCompile (
   // 解析模板得到抽象语法树（AST）
   // options即为合并得到的finalOptions
   const ast = parse(template.trim(), options) 
+  // 优化抽象语法树（静态标记）
   if (options.optimize !== false) { // 开启优化
-    optimize(ast, options) // 优化抽象语法树
+    // 优化抽象语法树
+    // 对节点进行静态标记，分别会增加static和staticRoot两个属性
+    optimize(ast, options) 
   }
-  const code = generate(ast, options) // 将抽象语法树转为render函数等代码块
+  
+    // 代码生成
+   // 将抽象语法树转为render函数等代码块
+  const code = generate(ast, options)
   return {
     ast, 
     render: code.render, // render函数
-    staticRenderFns: code.staticRenderFns
+    // 静态根节点的render函数，对于静态根节点，会被render函数使用索引进行引用
+    staticRenderFns: code.staticRenderFns 
   }
 })
