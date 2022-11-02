@@ -71,16 +71,16 @@ Vue.prototype.$mount = function (
         mark('compile')
       }
 
-      // 将template模板编译后会得到render, staticRenderFns两个函数，分别存在vm.$options上面
+      // 将template模板编译后会得到render函数和包含静态render的staticRenderFns数组，分别存在vm.$options上面
       const { render, staticRenderFns } = compileToFunctions(template, {
-        outputSourceRange: process.env.NODE_ENV !== 'production',
+        outputSourceRange: process.env.NODE_ENV !== 'production', // 用于输出错误时输出代码所处的位置的
         shouldDecodeNewlines,  // 是否对属性值的换行符做解码处理
         shouldDecodeNewlinesForHref, // 是否对a标签的href属性值中的换行符做解码处理
         delimiters: options.delimiters, // 插值表达式定界符
         comments: options.comments // 是否保留注释
       }, this)
-      options.render = render
-      options.staticRenderFns = staticRenderFns
+      options.render = render // 生成的render函数
+      options.staticRenderFns = staticRenderFns // 生成静态节点的render函数组成的数组 
 
       /* istanbul ignore if */
       if (process.env.NODE_ENV !== 'production' && config.performance && mark) {

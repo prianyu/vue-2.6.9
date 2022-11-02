@@ -10,7 +10,7 @@ import { createCompileToFunctionFn } from './to-function'
  * @param {*} baseCompile 自定义编译器，里面实现了一套解析器、优化器和代码编译器
  * @returns  { compile, compileToFunctions}
  * createCompilerCreator接收baseCompile，由baseCompile来定义自己的解析器（parser）/优化器（optimizer）/codegen编译器（codegen），
- * 比如服务端渲染和浏览器渲染可以用自己不同的baseCompile，这也意味着如果我们由自己的编译平台，我们就可以通过实现一个自己的baseCompile
+ * 比如服务端渲染和浏览器渲染可以用自己不同的baseCompile，这也意味着如果我们有自己的编译平台，我们就可以通过实现一个自己的baseCompile
  * 来定制自己的编译器，多端构建就是基于这个基本原理来实现的
  */
 export function createCompilerCreator (baseCompile: Function): Function {
@@ -64,7 +64,7 @@ export function createCompilerCreator (baseCompile: Function): Function {
           )
         }
         // copy other options
-        // 将除modulesh和directives以外的选项拷贝至finalOptions
+        // 将除modules和directives以外的选项拷贝至finalOptions
         for (const key in options) {
           if (key !== 'modules' && key !== 'directives') {
             finalOptions[key] = options[key]

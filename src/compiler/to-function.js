@@ -19,6 +19,7 @@ function createFunction (code, errors) {
   }
 }
 
+// 将render和staticRenderFns的代码字符串转为可执行函数
 export function createCompileToFunctionFn (compile: Function): Function {
   const cache = Object.create(null)
 
