@@ -72,7 +72,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     const prevEl = vm.$el // 实例挂载元素
     const prevVnode = vm._vnode // 上一次的虚拟节点_vnode
     const restoreActiveInstance = setActiveInstance(vm) //切换当前激活的实例
-    vm._vnode = vnode // 有render函数生成的准备更新渲染的vnode
+    vm._vnode = vnode // 由render函数生成的准备更新渲染的vnode
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
     if (!prevVnode) {// 初次渲染节点，对比$el与vnode

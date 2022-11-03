@@ -10,14 +10,43 @@ src
 ├── sfc             # .vue 文件解析
 ├── shared          # 共享代码
 ```
+## 主流程
+### （1）实例化阶段
+1. Vue实例化，会执行vm.init，会添加_uid,_isVue,_self,_renderProxy等属性，并执行以下流程
+2. 选项合并，合并过程中会按照子组件合和非子组件做不同的合并策略
+3. 执行initLifecycle(vm)，初始化一些与组件生命周期相关的属性和方法，如$parent,$children,$root,$_watcher,_inactive,_isMounted,_isDestroyed等
+4. 执行initEvent(vm)，初始化一些与事件相关的属性，子组件会根据父组件绑定的属性进行初始化，如_event,_hasHookEvent，如果此时是子组件，且父组件上传递了事件（vm._parentListeners），则会更新子组件的绑定事件列表，对`vm._parentListeners进行包装
+5. 执行initRender(vm)，初始化一些与渲染相关的属性和方法，如$vnode,_vnode,$slots,$scopeSlots,$attrs,$listeners,$createElement,_c
+6. 执行beforeCreate生命周期，因为此时还没初始化数据，所以获取不到data，props等数据
+7. 执行initInjections(vm)，对inject进行初始化，其取值来源于祖先元素的_provided属性，添加的inject不能在子组件直接修改
+8. 执行initState(vm)，会分别执行initProps,initData,initMethods,initWatch,initComputed方法，分别对props、data、methods、watch、computed初始化，同时会添加_watchers属性，用于存储观察者。Vue响应式的核心原理就是在这一个阶段进行的
+9. 执行initProvide(vm)，初始化provide，其处理的结果会存在实例的_provided上，这于子组件实例化inject时从_provided获取数据是相对应的
+10. 执行created生命周期，到这一步，基本数据已经都初始化完毕了
+11. 判断是否传了el，是的话则执行$mount(el)，进入挂载阶段；否则等待手动挂载，手动挂载后也会进入挂载阶段
+ 
+### （2）挂载阶段
+
+1. 判断是否有render函数，如果没有则进入8，否则进入2
+2. 执行beforeMount生命周期
+3. 定义渲染Watcher，渲染Watcher里会有before钩子，如果不是首次渲染会执行beforeUpdate钩子
+4. 执行vm._render()生成虚拟DOM（VNode）
+5. 执行vm._update()生成真实DOM
+6. 如果是首次挂载，会执行mounted的生命周期
+7. 挂载完毕，等待更新
+8. 如果有template，取模板为template，否则根据是否有el取el.outerHTML作为模板
+9. 将模板进行解析并生成render函数
+10. 进入2
+
+### （3）更新阶段
+                  
 ## 一、Vue定义
 ### 1. prototype
 
-+ initMixin(Vue) // 原型新增_init方法
-+ stateMixin(Vue) // $data,$props,$watch,$delete,$set
-+ eventsMixin(Vue) // $on,$once,$off,$emit
-+ lifecycleMixin(Vue) // _update,$forceUpdate,$destroy
-+ renderMixin(Vue) // $nextTick,_render,各类辅助方法（如_s,_t,_o等）
++ initMixin(Vue) ：往原型新增_init方法，用于整个Vue实例的实例化
++ stateMixin(Vue) ：往原型增加 $data,$props属性，其中$data会代理至vm._data，$props会代理至vm._props；新增$watch,$delete,$set方法，$watch执行后返回一个取消watch的方法
++ eventsMixin(Vue) ：往原型增加$on,$once,$off,$emit等与事件相关的方法。使用$on绑定的事件会存储在_events中，如果事件名是`hook:`开头，则会将`vm._hasHookEvent`标记为true，用于优化。其中$once只是对$on和$off的一个包装函数
++ lifecycleMixin(Vue) ：往原型增加_update,$forceUpdate,$destroy三个方法，其中_update方法会调用—__patch__方法对新老DOM进行对比，最终生成真实。$forceUpdate本质则是调用渲染Watcher的update方法，进行了一次强行的渲染
++ renderMixin(Vue) ：往原型添加$nextTick,_render以及各类与渲染相关的辅助方法（如_s,_t,_o等），_render方法用于生成虚拟节点(VNode)
 
 ### 2. 各种静态属性和方法
 
@@ -113,9 +142,11 @@ src
 + 如果传入了el，则调用$mount进行挂载
   - 调用mountComponent函数
 
-### 1. 选项合并与规范化
+### （1） 选项合并与规范化
 
-#### mergeOptions函数
+会根据实例上是否有options._isComponent属性选择不同的合并策略来进行合并。当_isComponent为true时代表的是子组件，会选择`initInternalComponent`进行选项合并，否则使用`mergeOptions`来合并。
+> _isComponent是在渲染阶段解析到子组件时内部实例化组件添加的一个属性。由于选项合并是比较耗时的，所以对于内部的创建的组件，做了特别的合并处理，这样可以提高选项合并的性能
+#### （1-1）mergeOptions函数
 参数: (parent,child,vm)
 
 选项合并的工具函数，专门用于合并Vue实例选项，如props、inject、directives等。

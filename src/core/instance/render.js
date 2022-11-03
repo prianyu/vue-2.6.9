@@ -77,6 +77,7 @@ export function renderMixin (Vue: Class<Component>) {
 
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
+    // render函数和外层的占位节点
     const { render, _parentVnode } = vm.$options
 
     // 规范化插槽
@@ -102,7 +103,8 @@ export function renderMixin (Vue: Class<Component>) {
       // 而所有的嵌套组件的render都会在父组件patch时执行
       // 因此无需维护一个栈
       currentRenderingInstance = vm // 标记当前正在渲染的组件实例
-      // vm._renderProxy在生产环境下就是vm，调用render函数，接收的参数为vm.$createElement函数
+      // 调用render函数，接收的参数为vm.$createElement函数
+      // vm._renderProxy在生产环境下就是vm，
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
       handleError(e, vm, `render`)
