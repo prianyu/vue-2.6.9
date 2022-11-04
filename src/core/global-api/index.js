@@ -21,6 +21,7 @@ import {
 // 初始化全局API的函数
 export function initGlobalAPI (Vue: GlobalAPI) {
   // Vue.config全局配置
+  // Vue.config是不允许被整体赋值的，只能修改内部的属性
   const configDef = {}
   configDef.get = () => config
   if (process.env.NODE_ENV !== 'production') {
@@ -63,8 +64,10 @@ export function initGlobalAPI (Vue: GlobalAPI) {
 
   // this is used to identify the "base" constructor to extend all plain-object
   // components with in Weex's multi-instance scenarios.
-  // 用于子类构造函数的创建
-  // 该标识在选项合并（mergeOptions）阶段会被用来判断选项是否做过合并
+  // 用于标识在Weex多实例场景中扩展普通对象组件的基本构造函数
+  // 也会被用于子类构造函数的创建，在子类构造函数中，会获取到_base进行实例化
+  // 该标识还被用于在选项合并（mergeOptions）阶段判断选项是否做过合并，因为选项合并时会将父类和子类的选项
+  // 进行合并，合并后的新对象就会有_base属性，反之，没有_base属性，则说明没有做过合并
   Vue.options._base = Vue
 
   // keepAlive组件

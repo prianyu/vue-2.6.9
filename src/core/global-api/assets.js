@@ -26,11 +26,11 @@ export function initAssetRegisters (Vue: GlobalAPI) {
           * Vue.component最终会调用Vue.extend方法
         */
         if (type === 'component' && isPlainObject(definition)) {
-          definition.name = definition.name || id
+          definition.name = definition.name || id // 没传name则将第一个参数作为name
           definition = this.options._base.extend(definition)
         }
         /**
-         * 指令定义方法
+         * 指令定义方法Vue.directive
          * 指令会统一转为{bind: def, update: def}的格式
          */
         if (type === 'directive' && typeof definition === 'function') {

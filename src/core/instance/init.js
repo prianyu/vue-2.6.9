@@ -40,9 +40,10 @@ export function initMixin (Vue: Class<Component>) {
     } else { // 非子组件选项合并
       // 将构造函数上的选项、传入的选项进行合并
       // 构造函数可以是Vue，也可以是使用Vue.extend继承生成的构造函数
-      // 选项合并后会对props，inject，direvtives做选项的规范话，已以及对mixins，extends，components等都做了合并
+      // 选项合并后会对props，inject，direvtives做选项的规范化，以及对mixins，extends，components等都做了合并
       vm.$options = mergeOptions(
          // 处理构造器选项，只有是子类构造器，且子类或者基类构造器选项改变了才会重新计算
+         // 构造函数上的options会有内置组件（keepAlive，transtion等）、指令（v-model、v-show）等
         resolveConstructorOptions(vm.constructor),
         options || {}, // 实例化时的选项
         vm // 组件实例
@@ -51,7 +52,12 @@ export function initMixin (Vue: Class<Component>) {
 
 
     /* istanbul ignore else */
+    // vm._renderProxy 用于后续执行_render方法
     if (process.env.NODE_ENV !== 'production') {
+      // 开发环境会给出一些提醒，你如属性名不能以$和_开头
+      // 渲染时使用了为定义的属性
+      // initProxy最终也会在vm上增加一个_rednerProxy属性
+      // 但是该属性具有拦截器，拦截了以上的一些操作，并在适当时候给提醒
       initProxy(vm)
     } else {
       vm._renderProxy = vm

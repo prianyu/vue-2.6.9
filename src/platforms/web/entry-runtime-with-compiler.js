@@ -15,6 +15,8 @@ const idToTemplate = cached(id => {
 })
 
 // 重写$mount方法
+// 传入el，最终el会被作为挂载元素，自动执行挂载，因此获取的是outerHTML
+// 传入的template，最终需要提供一个挂载节点（手动挂载或者传入el自动挂载），因此，其获取的是innerHTML
 const mount = Vue.prototype.$mount
 Vue.prototype.$mount = function (
   el?: string | Element,

@@ -50,7 +50,6 @@ export function generate (
   const state = new CodegenState(options) // 代码编译的基础配置等
   // 有ast则创建，无则创建一个空的div元素
   const code = ast ? genElement(ast, state) : '_c("div")' 
-  debugger
   return {
     // 将生成的代码使用with进行包裹后作为render函数
     // 最终会被放到vm.options.render中

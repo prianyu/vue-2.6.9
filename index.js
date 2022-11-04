@@ -98,3 +98,11 @@ const app = new Vue({
   }  
 })
 app.$mount("#app")
+
+Vue.component("custom", {
+  data() {
+    return {
+      my: 'hash'
+    }
+  }
+})

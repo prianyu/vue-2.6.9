@@ -48,7 +48,7 @@ export function createFnInvoker (fns: Function | Array<Function>, vm: ?Component
   function invoker () {
     const fns = invoker.fns // 获取回调函数
     if (Array.isArray(fns)) { // 回调函数是个数组
-      const cloned = fns.slice() /
+      const cloned = fns.slice()
       // 遍历并执行
       for (let i = 0; i < cloned.length; i++) {
         invokeWithErrorHandling(cloned[i], null, arguments, vm, `v-on handler`)

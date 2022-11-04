@@ -33,7 +33,8 @@ extend(Vue.options.components, platformComponents) // 添加transition、transit
 // 浏览器环境下添加__patch__方法
 Vue.prototype.__patch__ = inBrowser ? patch : noop
 
-// 与平台无关的$mount方法
+// 与端（客户端、服务端）无关的$mount方法
+// 该方法无compiler
 Vue.prototype.$mount = function (
   el?: string | Element,
   hydrating?: boolean
