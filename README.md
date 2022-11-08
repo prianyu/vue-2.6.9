@@ -165,13 +165,13 @@ src
 
 执行`this._init(options)`后
 + 打上_uid,_self,_isVue等属性
-+ [选项合并](#1-选项合并)
++ 选项合并
   - 据当options._isComonent属性判断是否为子组件（内部创建）
   - 子组件调用[initInternalComponent(vm, options)](#initinternalcomponent函数)做选项合并，合并后的options会有_parentNode、_parentListeners、propDatas等属性
   - 非子组件调用[mergeOptions(resolveConstructorOptions(vm.constructor),options || {},vm)](#mergeoptions函数)做合并
 + initLifecycle(vm)：初始化$parent和$children并绑定父子关系，初始化$refs,$root,_watcher,_inactive,_isMounted,_isDestroyed,_isBeingDestroyed,_directInactive等属性
 + initEvents(vm)：初始化_events,_hasHookEvent等属性，更新$options._parentListeners
-+ initRender(vm)：初始化_vnode,$vnode,$slots,$scopeSlots,$createElement,_c以及响应式的$listeners,$attrs等属性
++ initRender(vm)：初始化_vnode,$vnode,$slots,$scopedSlots,$createElement,_c以及响应式的$listeners,$attrs等属性
 + callHook(vm, 'beforeCreate')：执行beforeCreate钩子
 + initInjections(vm) // 在data和props前处理inject，会逐级遍历父元素获取对应inject并注入，inject是响应式的，但是不可被修改
 + initState(vm)：依次处理props、methods、data、computed、watch
@@ -183,10 +183,12 @@ src
   - 初始化watch：遍历watcher，规范化参数后调用vm.$watch
 + initProvide(vm) ：在data和props处理后处理provide，provide可以为函数可以为对象，默认provide是非响应式的（除非传入的provide本身是响应式）
 + callHook(vm, 'created')：执行created钩子
-+ 如果传入了el，则调用$mount进行挂载
++ 如果传入了el，则调用$mount进行挂载，进入挂载阶段
   - 调用mountComponent函数
 
 ### （1） 选项合并与规范化
+
+> 文件位置：[src/core/util/options.js](./src/core/util/options.js)
 
 会根据实例上是否有options._isComponent属性选择不同的合并策略来进行合并。当_isComponent为true时代表的是子组件，会选择`initInternalComponent`进行选项合并，否则使用`mergeOptions`来合并。
 > _isComponent是在渲染阶段解析到子组件时内部实例化组件添加的一个属性。由于选项合并是比较耗时的，所以对于内部的创建的组件，做了特别的合并处理，这样可以提高选项合并的性能
@@ -310,10 +312,158 @@ src
   ```
 + 合并render方法和staticRenderFn方法
 
+### （2）initLifecycle
+
+> 文件位置：[src/core/instance/lifecycle.js](./src/core/instance/lifecycle.js)
+
+与生命周期相关的属性的初始化：
++ 增加$parent和$children属性，绑定父子关系，如果当前实例不是抽象的，则会将自身push至离自己最近的非抽象祖先组件的children中
++ 添加$root的属性指向根元素，如果本身就是根元素则指向自身
++ 增加$refs属性
++ 增加_watcher（存放渲染Watcher）、_inactive（组件是否处于keepAlive）、_directInactive、_isMounted（是否已挂载）、_isDestroyed（是否已销毁）、_isBeingDestroyed（标记组件是否出于正在销毁的阶段）等属性
+
+### （3）initEvents
+> 文件位置：[src/core/instance/events.js](./src/core/instance/lifecycle.js)
+
+与事件相关的属性的初始化：
++ 增加_events,_hasHookEvent，分别用于存放事件和标记是否有`hook:`事件
++ 获取vm.$options._parentListeners，即父组件传递给子组件的事件，对子组件的事件进行更新，本质上是对vm.$options._parentListeners的新老事件（初始化时老事件为空）做了合并和封装，会对每一个事件创建一个调用者(invoker)，真实的回调则是放在了invoker.fns上，最后在vm上调用$on,$once,$off等绑定或者卸载事件。
+
+> 创建的调用者在下次更新事件时，如果同一个事件已经创建过调用者了，则只更新新事件的引用；旧事件如果再更新时已经不存在了，则会卸载掉旧事件
+
+### （4）initRender
+> 文件位置：[src/core/instance/render.js](./src/core/instance/lifecycle.js)
+
+初始化与渲染相关的一些属性和方法：
++ 初始化_vnode,$vnode，$vnode = options._parentVnode
++ 处理插槽，增加$slots和$scopedSlots属性，组件内的子节点会被按照slot名称分类，结果赋值给$slots，$scopedSlots为空对象，在执行vm._render时会进行具体的处理
++ 增加$createElement,_c方法，分别用于内部组件创建的render函数和用户render函数
++ 初始化响应式的$listeners,$attrs等属性
+
+```html
+    <layout>
+      <h1 v-slot:header="param">{{title}}</h1>
+      <p>{{msg}}</p>
+      <p slot="footer">{{footer}}</p>
+      <p>{{msg}}</p>
+    </layout>
+```
+```javascript 
+Vue.component('Layout', {
+  template: `<div class="container">
+                  <header>
+                      <slot name="header">默认header</slot>
+                  </header>
+                  <main>
+                      <slot>默认main</slot>
+                  </main>
+                  <footer>
+                      <slot name="footer">默认footer</slot>
+                  </footer>
+              </div>`
+})
+
+const app = new Vue({
+  el: "#app",
+  data() {
+    return {
+      title: "这里是标题",
+      msg: "这里是内容",
+      footer: "这里是footer"      
+    }
+  }
+})
+```
+layout实例初始化后
+```javascript
+vm.$slots = {
+  default: [VNode, VNode, VNode, VNode, Vnode], // 两个p标签，三个空白节点（换行产生）
+  header: [VNode], // h1标签
+  footer: [VNode] // p标签
+}
+```
+
+### （4）initInjections
+> 文件位置：[src/core/instance/inject.js](./src/core/instance/lifecycle.js)
+
+初始化实例的inject：
++ 会获取当前inject的key，并从祖先元素中寻找对应的provide
++ 如果找不到，会使用inject的default值作为provide
++ 最终会是defineReactive将找到的provide定义在vm实例上
++ inject是由祖先提供的，所以在子组件不应该直接修改，因为其修改在祖先元素重新渲染后会被覆盖
+  
+### （6）initState
+> 文件位置：[src/core/instance/state.js](./src/core/instance/lifecycle.js)
+
++ 添加vm._watchers属性，用于存放所有的观察者
++ 依次处理props、methods、data、computed、watch，Vue响应式系统一般指这一部分的内容。
+
+**1. initProps**
+
+处理$options.props，转为响应式的数据：
++ 增加_props用于存储props的属性，增加_propKeys用于存储所有props的key，方便后续遍历使用
++ 遍历$options.props，将其key存储到_propKeys中，在_props上定义对应的key的响应式数据，props是不允许直接修改的
++ 定义_props[key]时，会从propsData中获取数据并校验，如果合法则会从中取值并赋值。这个过程中还会做默认值的设置以及数据的观测
++ 将vm[key]代理至vm._props[key]
+  
+**2. initMethods**
+
+处理$options.methods：
++ 检测是否存在同名的prop以及方法名是否为保留名称（_和$开头）
++ 将method添加到vm上并绑定上下文为vm
+
+**3. initData**
+
+处理$options.data，转为响应式的data：
++ 获取data的值（可能为函数，需要执行函数获取），获取后data为一个普通对象
++ 检测是否存在同名的prop和method属性
++ 调用observe方法，对data进行观测
+  - 如果没有__ob__属性，会添加ob = new Observe(data)，实例化时会在data上增加__ob__属性引用ob
+  - 如果作为根数据观测，则会执行ob.vmCount++，用于Vue.del和Vue.set的相关逻辑的条件判断
+  - 最后返回ob
+  
+**4. initComputed**
+
+处理计算属性$options.computed：
++ 增加vm.__computedWatchers对象属性，用于存放所有计算属性的watcher
++ 遍历$options.computed创建惰性求值（{lazy: true}）的watcher并存至vm.__computedWatchers
+  ```javascript
+  const computedWatcherOptions = { lazy: true }
+  const watchers = vm.__computedWatchers
+  const useDef = computed[key]
+  const getter = typeof userDef === 'function' ? userDef : userDef.get
+  watchers[key] = new Watcher(
+    vm,
+    getter || noop,
+    noop,
+    computedWatcherOptions // 计算属性的wather是懒加载的
+  )
+  ```
++ 在vm上添加对应的computed属性
+  - 解析得到setter和getter，定义描述对象，getter会根据是否缓存定义不同，如果无需缓存则将定义的回调的上下文绑定到vm既可；如果有缓存则会根据值是否改变从watcher中计算得到值，在这里会进行渲染watcher的依赖收集。
+  - 并在使用Object.defineProperty在vm上添加对应的computed属性
+  - 如果没有setter，则会设置默认的setter，在改变computed的值会给出不可直接修改的提醒
++ 检测是否有同名的data和prop属性
+
+**5. initWatch**
+
+初始化$options.watch：
++ 遍历watch，根据配置执行createWacher函数，如果是数组则会遍历执行createWacher，最终按顺序执行watcher
++ createWacher会执行vm.$watch
++ $watch最终会调用`new Watcher(...)`创建用户watcher，如果是立即执行的则会立即执行回调
++ 创建后会返回一个取消检测的方法unwatchFn，用于取消监测
+
+### （7）initProvide
+> 文件位置：[src/core/instance/inject.js](./src/core/instance/lifecycle.js)
+处理$options.provide：
++ 会根据provide为函数获取provide值
++ 将获取的值放到vm._provide属性上
+
 ## 三、组件挂载
 
+> 文件位置：[src/core/instance/lifecycle.js](./src/core/instance/lifecycle.js)
 调用`mountComponent(vm, el)`函数：
-+ 将el赋值给vm.$el
++ 将el赋值给vm.$el，此时vm.$el为原始的DOM节点
 + 如果没有找到render函数，但是传了template或者el，给出使用runtime-only的编译版本的提示，同时会将render赋值为创建空节点函数
 + callHook(vm, 'beforeMount')：执行beforeMount钩子
 + 定义了updateComponent函数用于更新组件
@@ -325,16 +475,55 @@ src
 
 ### 1. prototype._render
 
-作用：将实例渲染成一个虚拟的Vnode
+作用：将组件实例渲染成一个VNode
 
-+ 获取$options上的render和_parentVnode
++ 获取$options上的render函数和_parentVnode
 + 规范化插槽
 + vm.$vnode指向_parentVnode，这样提供了一个让render函数访问占位节点的上下文环境
-+ 调用render函数生成虚拟DOM，接收的参数为vm.$createElement函数，将虚拟DOM结果赋值给vnode（渲染失败会返回vm._vnode）
++ 调用render函数生成虚拟DOM，接收的参数为vm.$createElement函数，将虚拟DOM结果赋值给vnode（渲染失败会返回vm._vnode，即上一次生成的虚拟节点）
 + vnode.parent = _parentNode，绑定父子关系
 + 返回最终的vnode
   
-> _render过程中添加的vm.$vnode与_update过程中添加的vm._vnode是父子关系，vm._vnode.parent = vm.$vnode
+_render过程中添加的vm.$vnode、_update过程中添加的vm._vnode、vm.$options._parentVnode有如下关系。
+
+```javascript
+vm.$options._parentNode === vm.$vnode
+vm.$vnode === vm._vnode.parent
+```
+其中`vm._vnode`就是render函数的执行结果
+
+例子：
+
+```javascript
+Vue.component("custom", {
+  template: "<div>text</div>"
+})
+
+// 实例化的结果
+vm = {
+  $vnode: {
+    tag: "vue-component-1-custom",
+    // ...
+  }, 
+  $options: {
+    _parentVnode: {
+      tag: "vue-component-1-custom",
+    // ...
+    }
+  },
+  _vnode: {
+    tag: "div",
+    children: [
+      {tag: undefined, text: "text"} 
+    ],
+    parent: {
+      tag: "vue-component-1-custom",
+      // ...
+    }, 
+
+  }
+}
+```
 
 
 

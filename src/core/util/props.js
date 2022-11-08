@@ -17,39 +17,43 @@ type PropOptions = {
   required: ?boolean,
   validator: ?Function
 };
-
+// 验证prop
+// 接收Boolean
+// 1. 不传值时默认为false；
+// 2. 传了空字符串或者属性时与属性名称一致，如果不接收String类型或者Boolean类型权重比String类型高，则默认值设置为true
 export function validateProp (
-  key: string,
+  key: string, // 
   propOptions: Object,
-  propsData: Object,
+  propsData: Object, // 父组件传递进来的propsData
   vm?: Component
 ): any {
-  const prop = propOptions[key]
-  const absent = !hasOwn(propsData, key)
-  let value = propsData[key]
+  const prop = propOptions[key] // 获取prop[key]配置
+  const absent = !hasOwn(propsData, key) // 标记是否没有传值
+  let value = propsData[key] // 获取传入的值
   // boolean casting
-  const booleanIndex = getTypeIndex(Boolean, prop.type)
-  if (booleanIndex > -1) {
-    if (absent && !hasOwn(prop, 'default')) {
+  const booleanIndex = getTypeIndex(Boolean, prop.type) // 从配置的type中获取是否接受Boolean类型
+  if (booleanIndex > -1) { // 接收类型配置
+    if (absent && !hasOwn(prop, 'default')) { // 没有传值也没有默认值，则设置值为false
       value = false
-    } else if (value === '' || value === hyphenate(key)) {
+    } else if (value === '' || value === hyphenate(key)) { // 传了空值或者值与属性名称的一样
       // only cast empty string / same name to boolean if
       // boolean has higher priority
       const stringIndex = getTypeIndex(String, prop.type)
       if (stringIndex < 0 || booleanIndex < stringIndex) {
+        // 不接受String类型或者Boolean的权重比String类型高，在将值设置为true
         value = true
       }
     }
   }
   // check default value
-  if (value === undefined) {
-    value = getPropDefaultValue(vm, prop, key)
+  if (value === undefined) { // 没有传值
+    value = getPropDefaultValue(vm, prop, key) // 获取默认值
     // since the default value is a fresh copy,
     // make sure to observe it.
-    const prevShouldObserve = shouldObserve
-    toggleObserving(true)
-    observe(value)
-    toggleObserving(prevShouldObserve)
+    const prevShouldObserve = shouldObserve // 缓存当前的shouldObserve
+    toggleObserving(true) // 开启观察
+    observe(value) // 观察这个值
+    toggleObserving(prevShouldObserve) // 恢复上一次的shouldObserve
   }
   if (
     process.env.NODE_ENV !== 'production' &&
@@ -66,12 +70,13 @@ export function validateProp (
  */
 function getPropDefaultValue (vm: ?Component, prop: PropOptions, key: string): any {
   // no default, return undefined
-  if (!hasOwn(prop, 'default')) {
+  if (!hasOwn(prop, 'default')) { // 没有默认值
     return undefined
   }
   const def = prop.default
   // warn against non-factory defaults for Object & Array
   if (process.env.NODE_ENV !== 'production' && isObject(def)) {
+    // 引用类型的默认值需要使用工厂函数来创建
     warn(
       'Invalid default value for prop "' + key + '": ' +
       'Props with type Object/Array must use a factory function ' +
@@ -81,6 +86,7 @@ function getPropDefaultValue (vm: ?Component, prop: PropOptions, key: string): a
   }
   // the raw prop value was also undefined from previous render,
   // return previous default value to avoid unnecessary watcher trigger
+  //如果propsData上没有定义该数据，则放回上一次渲染的数据，可以避免不必要的观察者触发
   if (vm && vm.$options.propsData &&
     vm.$options.propsData[key] === undefined &&
     vm._props[key] !== undefined
@@ -187,7 +193,7 @@ function getType (fn) {
 function isSameType (a, b) {
   return getType(a) === getType(b)
 }
-
+// 从期望的数组中找到对应的类型
 function getTypeIndex (type, expectedTypes): number {
   if (!Array.isArray(expectedTypes)) {
     return isSameType(expectedTypes, type) ? 0 : -1

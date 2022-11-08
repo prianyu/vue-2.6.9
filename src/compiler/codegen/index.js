@@ -570,6 +570,7 @@ function genScopedSlot (
     }}`
   // reverse proxy v-slot without scope on this.$slots
   const reverseProxy = slotScope ? `` : `,proxy:true`
+  debugger
   return `{key:${el.slotTarget || `"default"`},fn:${fn}${reverseProxy}}`
 }
 

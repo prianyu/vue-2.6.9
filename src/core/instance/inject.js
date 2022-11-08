@@ -26,7 +26,7 @@ export function initInjections (vm: Component) {
   if (result) {
     toggleObserving(false)
     // 根据得到的provide数据往vm实例上添加响应式的数据
-    // inject从provide获取到的数据虽然是响应式的，但是在子组件上被直接修改
+    // inject从provide获取到的数据虽然是响应式的，但是不应该在子组件上被直接修改
     // 因为一旦提供provide的组件重新渲染了，所做的修改就会被覆盖掉
     Object.keys(result).forEach(key => {
       /* istanbul ignore else */

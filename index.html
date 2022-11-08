@@ -58,12 +58,27 @@
     </template> -->
 
     <!-- 实例 slot -->
-    <slot name="header" :param="123" v-bind="a" v-bind:user="b">
+    <!-- <slot name="header" :param="123" v-bind="a" v-bind:user="b">
       <div>default1</div>
       <div>default2</div>
-    </slot>
+    </slot> -->
 
+    <!-- $vnode, vnode -->
+    <!-- <custom></custom> -->
 
+    <!-- 示例 resolveSlots -->
+
+    <div>
+        <!-- {{msg}} {{ title}} -->
+        <layout>
+          <template v-slot:ok>ok</template>
+          <h1 slot="header">{{title}}</h1>
+          <p>{{msg}}</p>
+          <p slot="footer">{{footer}}</p>
+          <p>{{msg}}</p>
+        </layout>
+        <!-- {{com}} -->
+    </div>
 
 
     <!-- <pre id="pre" style="background: red;"> -->

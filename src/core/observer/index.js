@@ -149,7 +149,9 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
     ob = new Observer(value) // 创建Observer实例，创建后的实例会存在value.__ob__中
   }
   if (asRootData && ob) { // 实例的根数据，则ob的实例引用数+1
-    // Vue.set方法会判断vmCount是否大于0，如果是的话是无法处理的，也就是Vue.set是无法对根数据的key进行响应式处理的
+    // vmCount大于0则说明其为根数据，在操作上会有一些限制
+    // Vue.set和Vue.del方法会判断vmCount是否大于0，来决定是否处理
+    //也就是Vue.set和Vue.del是无法直接对根数据的key进行响应式处理的
     ob.vmCount++
   }
   return ob
@@ -157,7 +159,8 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
 
 /**
  * Define a reactive property on an Object.
- * 将一个对象定义为响应式的getter/setter
+ * 将一个对象定义为响应式的getter/setter，
+ * 并定义依赖收集器
  * 举例：
  * obj = {
  *    __ob__: Observer // 对象会有一个__ob__属性，__ob__.dep保存着obj的Dep 

@@ -84,25 +84,61 @@ const Bar = {
 const Baz = {
   template: `<h1>Baz<slot></slot></h1>`
 }
-const app = new Vue({
-  data() {
-    return {
-      ok: true,
-      
-    }
-  },
-  components: {
-    Foo,
-    Bar,
-    Baz
-  }  
-})
-app.$mount("#app")
 
 Vue.component("custom", {
+  template: "<div>{{my}}</div>",
   data() {
     return {
       my: 'hash'
     }
   }
 })
+Vue.component('Layout', {
+  template: `<div class="container">
+                  <header>
+                      <slot name="header">默认header</slot>
+                  </header>
+                  <main>
+                      <slot>默认main</slot>
+                  </main>
+                  <footer>
+                      <slot name="footer">默认footer</slot>
+                  </footer>
+              </div>`
+})
+
+const app = new Vue({
+  data() {
+    return {
+      // ok: true,
+      title: "这里是标题",
+      msg: "这里是内容",
+      // footer: "这里是footer"      
+    }
+  },
+  computed: {
+    com: {
+      get: function() {
+        // console.log("get")
+        return this.title + this.msg
+      },
+      cache: false
+    }
+  },
+  created: function(){
+    setTimeout(() => {
+      this.msg = "hello,world"
+    }, 3000)
+  },
+
+  components: {
+    Foo,
+    Bar,
+    Baz
+  }  
+})
+
+app.$mount("#app")
+
+console.log(app)
+

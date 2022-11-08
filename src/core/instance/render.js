@@ -16,6 +16,7 @@ import VNode, { createEmptyVNode } from '../vdom/vnode'
 
 import { isUpdatingChildComponent } from './lifecycle'
 
+// 初始化与render相关的一些属性和方法
 export function initRender (vm: Component) {
   vm._vnode = null // 子树的根节点
   vm._staticTrees = null // v-once cached trees v-once标记的组件渲染后的静态的树
@@ -25,10 +26,20 @@ export function initRender (vm: Component) {
   // 这个vnode保存着各种组件的信息，如渲染上下文，children，Ctor，data等
   const parentVnode = vm.$vnode = options._parentVnode 
   const renderContext = parentVnode && parentVnode.context // 渲染上下文
- // 插槽处理
- // 组件的子组件都是被当作插槽来处理的,_renderChildren就是组件要渲染的children,renderContext为子组件在渲染时所处的上下文
+ // 插槽处理，解析组件中插槽的内容
+
+  // 非作用域插槽的内容处理
+  // _renderChildren为组件内子节点组成的VNode数组，这个处理主要做几件事：
+  // 1. 删除VNode上的data.attrs.slot属性
+  // 2. 对VNode按照是否命名做了分组处理
+  // 3. 对每一个分组，如果只包含空白的VNode节点，则删除该分支
+  // 4. 最终会返回一个分组后的插槽对象，如{default: [VNode, VNode], footer: [VNode, VNode], header: [VNode]}
   vm.$slots = resolveSlots(options._renderChildren, renderContext) 
-  vm.$scopedSlots = emptyObject // 作用域插槽
+  // 作用域插槽，初始化为空对象
+  vm.$scopedSlots = emptyObject 
+
+
+
   // bind the createElement fn to this instance
   // so that we get proper render context inside it.
   // args order: tag, data, children, normalizationType, alwaysNormalize
@@ -47,6 +58,7 @@ export function initRender (vm: Component) {
 
   // 从占位组件提取传进来的attrs和listeners
   /* istanbul ignore else */
+  // obj,key,val,customSetter,shallow
   if (process.env.NODE_ENV !== 'production') {
     defineReactive(vm, '$attrs', parentData && parentData.attrs || emptyObject, () => {
       !isUpdatingChildComponent && warn(`$attrs is readonly.`, vm)
@@ -74,13 +86,23 @@ export function renderMixin (Vue: Class<Component>) {
   Vue.prototype.$nextTick = function (fn: Function) {
     return nextTick(fn, this)
   }
-
+  // 需要区分vnode和$vnode的区别和联系
+  // $vnode是组件占位符，vnode是其真实渲染的DOM元素的虚拟节点，执行render函数生成
+  // vnode.parent === vm.$vnode === vm.$options._parentVnode
+  // 以组件<custom>为例，$vnode则是custom本身，其最终可能为{tag: "vue-component-1-cutrom", ...}
+  // vnode则为custom组件内容根节点对应的vnode
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
     // render函数和外层的占位节点
     const { render, _parentVnode } = vm.$options
 
     // 规范化插槽
+    // _parentVnode不为空，说明是子组件（使用VueComponent创建过来的）
+    // 对其插槽做规范化处理
+    // 走到这里，vm.$slots在initRender的时候已经做了分组处理，
+    // 而vm.$scopedSlots初始化时为空对象，后续则为上一次的执行结果
+    // _parentVnode.data.scopedSlots则也是已经分组的作用域插槽节点的集合(函数)
+    // @suspense
     if (_parentVnode) {
       vm.$scopedSlots = normalizeScopedSlots(
         _parentVnode.data.scopedSlots,
@@ -104,7 +126,7 @@ export function renderMixin (Vue: Class<Component>) {
       // 因此无需维护一个栈
       currentRenderingInstance = vm // 标记当前正在渲染的组件实例
       // 调用render函数，接收的参数为vm.$createElement函数
-      // vm._renderProxy在生产环境下就是vm，
+      // vm._renderProxy一般就是vm
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
       handleError(e, vm, `render`)

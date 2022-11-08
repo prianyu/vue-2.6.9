@@ -226,7 +226,7 @@ export function mountComponent (
   // we set this to vm._watcher inside the watcher's constructor
   // since the watcher's initial patch may call $forceUpdate (e.g. inside child
   // component's mounted hook), which relies on vm._watcher being already defined
-  // 渲染Watcher：vm_watcher，调用$forceUpdate时会依赖渲染watcher
+  // 渲染Watcher：vm._watcher，调用$forceUpdate时会依赖渲染watcher
   new Watcher(vm, updateComponent, noop, {
     before () {
       // 更新前，判断是否已经挂载过，如果挂载过了就执行beforeUpate钩子

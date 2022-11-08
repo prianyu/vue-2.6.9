@@ -54,7 +54,7 @@ export function initMixin (Vue: Class<Component>) {
     /* istanbul ignore else */
     // vm._renderProxy 用于后续执行_render方法
     if (process.env.NODE_ENV !== 'production') {
-      // 开发环境会给出一些提醒，你如属性名不能以$和_开头
+      // 开发环境会给出一些提醒，比如属性名不能以$和_开头
       // 渲染时使用了为定义的属性
       // initProxy最终也会在vm上增加一个_rednerProxy属性
       // 但是该属性具有拦截器，拦截了以上的一些操作，并在适当时候给提醒
@@ -103,8 +103,8 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   // doing this because it's faster than dynamic enumeration.
   // 同步原型的属性，提高查找速度
   const parentVnode = options._parentVnode // 与vm.$vnode是同一个引用，是子组件的占位vnode
-  opts.parent = options.parent
-  opts._parentVnode = parentVnode
+  opts.parent = options.parent // 父元素引用
+  opts._parentVnode = parentVnode // 占位节点的引用
 
   const vnodeComponentOptions = parentVnode.componentOptions // 创建占位vnode时保存的选项信息，如propsData,children等
   opts.propsData = vnodeComponentOptions.propsData //提取propsData，即父组件传递给子组件的props

@@ -85,7 +85,9 @@ function initProps (vm: Component, propsOptions: Object) {
   }
   for (const key in propsOptions) {
     keys.push(key) // 缓存key
-    // 值的合法性检测
+    // 值的合法性检测并获取值
+    // 这里会对prop的默认值做计算，也会对prop值的合法性做校验
+    // 还会对prop值做数据监听
     const value = validateProp(key, propsOptions, propsData, vm)
     /* istanbul ignore else */
     // 定义响应式的props
@@ -181,16 +183,16 @@ export function getData (data: Function, vm: Component): any {
   /**
    * bug修复的解析
    * bug现象：
-   * 当子组件的data写成函数的形式并且函数使用了父组件传递给子组件的的props，如果父组件中传入的props响应式数据
+   * 当子组件的data写成函数的形式并且函数使用了父组件传递给子组件的props时，如果父组件中传入的props响应式数据
    * 变化时，会触发两次父组件的更新。而且触发两次更新只在数据第一次发生改变时发生，后续就是正常的只触发一次更新
    * 产生bug的原因：
    * 当执行data.call(vm,vm)获取子组件的data时，因为引用了父组件传进来的props数据，会触发其props的getter，造成了
-   * props收集依赖。由于数据的初始化的时机时介于beforeCreate和create之间，此时子组件还未进入渲染阶段（即渲染Watcher未生成）
-   * 因为渲染Watcher实在挂载时调用mountComponent函数生成的，因此，此时的Dep.target指向的依然是父组件的渲染Watcher。
+   * props收集依赖。由于数据的初始化的时机是介于beforeCreate和create之间，此时子组件还未进入渲染阶段（即渲染Watcher未生成）
+   * 因为渲染Watcher是在挂载时调用mountComponent函数生成的，因此，此时的Dep.target指向的依然是父组件的渲染Watcher。
    * 最终表现就是父组件的数据更新时，正确的触发了一次父组件的渲染Watcher的update，更新子组件的props时，又触发了一次父组件的渲染Watcher的update/
    * 在第一次更新以后，后续的依赖收集中，子组件的渲染Watcher已经存在了，所以不会收集到父组件的渲染Watcher。
    * 
-   * 这个bug不仅仅存在于此，子组件的beforeCreate，create，beforeMounted这三个生命周期如果用了props的话，都会出现一样的问题，
+   * 这个bug不仅仅存在于此，子组件的beforeCreate，created，beforeMounted这三个生命周期如果用了props的话，都会出现一样的问题，
    * 所以在callHook函数中，也做了一样的Dep.target置空的操作
    * function callHook(vm, hook) {
    *  pushTarget()
@@ -294,6 +296,7 @@ export function defineComputed (
     }
   }
   // 在实例上定义计算属性，其结果为一个setter和getter的集合
+  console.log(key, sharedPropertyDefinition)
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
@@ -310,6 +313,17 @@ function createComputedGetter (key) {
       if (watcher.dirty) {  // 依赖的数据变化了或者是初次获取值
         watcher.evaluate()
       }
+      // 这里本质是增加渲染watcher的依赖收集
+      // 当进行render的时候会创建一个渲染Watcher，此时Dep.target即为该渲染Watcher
+      // render过程中遇到需要依赖的数据，会触发数据的get函数，此时Dep.target不为空就可以进行依赖收集
+      // 有一种情况就是：渲染的模板中只依赖的了计算属性，没有依赖data数据，而计算属性又依赖data时，
+      // 如 computed: { msg: function() { return this.a + 1}}, <div>{{msg}}</div>
+      // 当读取到计算属性时，会触发计算属性的getter，getter执行，会通过watcher.evaluate求值，
+      // 此时Dep.target为计算属性watcher，计算属性的watcher会被正常收集到依赖，
+      // 收集完执行popTarget()，Dep.target被恢复为渲染Watcher。
+      // 如果不进行下方的依赖收集的操作，那么意味着渲染Watcher收集不到a的依赖
+      // 下次a更新了，msg会正常更新，但是视图无法更新
+      // 这就是为什么这里需要执行以下watcher.depend()
       if (Dep.target) { // 依赖收集
         watcher.depend()
       }
@@ -322,6 +336,11 @@ function createComputedGetter (key) {
 // 服务端渲染的计算属性getter调用者
 function createGetterInvoker(fn) {
   return function computedGetter () {
+    // 假如这里依赖data或者prop，执行时候会触发其get方法
+    // 会进行依赖收集
+    // 这里与createComputedGetter不同，不需要再执行watcher.depend()
+    // 因为每一次都会求值，执行属性依赖的getter时，会触发依赖收集，由于此时没有执行watcher.evaluate，
+    // 那么Dep.target就不会被设置为计算属性的watcher，也就能够正常的完成渲染watcher的依赖收集
     return fn.call(this, this)
   }
 }
