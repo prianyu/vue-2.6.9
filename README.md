@@ -48,7 +48,7 @@ src
 + initMixin(Vue) ：往原型新增_init方法，用于整个Vue实例的实例化
 + stateMixin(Vue) ：往原型增加 $data,$props属性，其中$data会代理至vm._data，$props会代理至vm._props；新增$watch,$delete,$set方法，$watch执行后返回一个取消watch的方法
 + eventsMixin(Vue) ：往原型增加$on,$once,$off,$emit等与事件相关的方法。使用$on绑定的事件会存储在_events中，如果事件名是`hook:`开头，则会将`vm._hasHookEvent`标记为true，用于优化。其中$once只是对$on和$off的一个包装函数
-+ lifecycleMixin(Vue) ：往原型增加_update,$forceUpdate,$destroy三个方法，其中_update方法会调用—__patch__方法对新老DOM进行对比，最终生成真实。$forceUpdate本质则是调用渲染Watcher的update方法，进行了一次强行的渲染
++ lifecycleMixin(Vue) ：往原型增加_update,$forceUpdate,$destroy三个方法，其中_update方法会调用—__patch__方法对新老DOM进行对比，最终生成真实DOM。$forceUpdate本质则是调用渲染Watcher的update方法，进行了一次强行的渲染
 + renderMixin(Vue) ：往原型添加$nextTick,_render以及各类与渲染相关的辅助方法（如_s,_t,_o等），_render方法用于生成虚拟节点(VNode)
 
 **2. 添加与rumtime相关的属性和方法**
@@ -478,11 +478,11 @@ vm.$slots = {
 作用：将组件实例渲染成一个VNode
 
 + 获取$options上的render函数和_parentVnode
-+ 规范化插槽
++ 规范化作用域插槽，在initRender的时候$slots已经按名称了做了归类，$scopedSlots则为空对象，经过_render处理，$slots和$scopedSlots均包含了所有的插槽（作用插槽和普通插槽）,其中$scopedSlots是使用函数的形式的存储，同时具有$hasNormal、$stable、$key，_normalize等属性
 + vm.$vnode指向_parentVnode，这样提供了一个让render函数访问占位节点的上下文环境
 + 调用render函数生成虚拟DOM，接收的参数为vm.$createElement函数，将虚拟DOM结果赋值给vnode（渲染失败会返回vm._vnode，即上一次生成的虚拟节点）
-+ vnode.parent = _parentNode，绑定父子关系
-+ 返回最终的vnode
++ vnode.parent = _parentNode，绑定父子关系，vnode.parent = vm.$vnode
++ 返回最终的vnode，vm._vnode = vnode
   
 _render过程中添加的vm.$vnode、_update过程中添加的vm._vnode、vm.$options._parentVnode有如下关系。
 

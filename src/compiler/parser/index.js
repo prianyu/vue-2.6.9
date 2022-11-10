@@ -867,7 +867,6 @@ function processSlotContent (el) {
         const slots = el.scopedSlots || (el.scopedSlots = {}) // 给当前组件增加scopedSlots属性
         const { name, dynamic } = getSlotName(slotBinding) // 提取名称
         const slotContainer = slots[name] = createASTElement('template', [], el) // 创建template的Ast
-        debugger
         slotContainer.slotTarget = name 
         slotContainer.slotTargetDynamic = dynamic
         // 将子组件遍历放到template容器的children属性上，绑定父子关系

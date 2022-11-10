@@ -69,10 +69,10 @@ export function initLifecycle (vm: Component) {
 export function lifecycleMixin (Vue: Class<Component>) {
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
-    const prevEl = vm.$el // 实例挂载元素
-    const prevVnode = vm._vnode // 上一次的虚拟节点_vnode
+    const prevEl = vm.$el // 页面的挂载点，是一个真实的DOM
+    const prevVnode = vm._vnode // 老的VNode
     const restoreActiveInstance = setActiveInstance(vm) //切换当前激活的实例
-    vm._vnode = vnode // 由render函数生成的准备更新渲染的vnode
+    vm._vnode = vnode // 由render函数生成的准备更新渲染的新的VNode
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
     if (!prevVnode) {// 初次渲染节点，对比$el与vnode
@@ -226,7 +226,10 @@ export function mountComponent (
   // we set this to vm._watcher inside the watcher's constructor
   // since the watcher's initial patch may call $forceUpdate (e.g. inside child
   // component's mounted hook), which relies on vm._watcher being already defined
-  // 渲染Watcher：vm._watcher，调用$forceUpdate时会依赖渲染watcher
+  // 定义渲染Watcher：vm._watcher，调用$forceUpdate时会依赖渲染watcher
+  // 渲染watcher实例化化会执行watcher.get方法，进而执行updateComponent,完成首次渲染
+  // 首次渲染会触发依赖的数据的getter函数，进而实现依赖收集
+  // 后续的数据更新则会通知渲染watcher更新，实现视图的更新
   new Watcher(vm, updateComponent, noop, {
     before () {
       // 更新前，判断是否已经挂载过，如果挂载过了就执行beforeUpate钩子
@@ -240,7 +243,7 @@ export function mountComponent (
   // manually mounted instance, call mounted on self
   // mounted is called for render-created child components in its inserted hook
   // 将实例标记为已挂载状态，执行挂载完成钩子
-  if (vm.$vnode == null) {
+  if (vm.$vnode == null) { // 说明是首次挂载
     vm._isMounted = true
     callHook(vm, 'mounted')
   }

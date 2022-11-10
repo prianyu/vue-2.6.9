@@ -479,13 +479,15 @@ function genScopedSlots (
   // components with only scoped slots to skip forced updates from parent.
   // but in some cases we have to bail-out of this optimization
   // for example if the slot contains dynamic names, has v-if or v-for on them...
+  // 默认情况下，作用域插槽被认为是“稳定的”，这允许只有作用域插槽的子组件跳过来自父组件的强制更新。
+  // 但在某些情况下，我们必须避免这种优化，例如，如果插槽包含动态名称，上面有v-if或v-for。。。
   let needsForceUpdate = el.for || Object.keys(slots).some(key => {
     const slot = slots[key]
     return (
-      slot.slotTargetDynamic ||
-      slot.if ||
-      slot.for ||
-      containsSlotChild(slot) // is passing down slot from parent which may be dynamic
+      slot.slotTargetDynamic || // 动态名称
+      slot.if || // 有v-if
+      slot.for || // 有v-for
+      containsSlotChild(slot) // is passing down slot from parent which may be dynamic 父级传递的可能是动态插槽
     )
   })
 
@@ -493,6 +495,8 @@ function genScopedSlots (
   // it's possible for the same component to be reused but with different
   // compiled slot content. To avoid that, we generate a unique key based on
   // the generated code of all the slot contents.
+  // 如果具有作用域插槽的组件位于条件分支内，则可以重用相同的组件，但编译的插槽内容不同。
+  // 为了避免这种情况，我们根据生成的所有插槽内容的代码生成唯一的密钥。
   let needsKey = !!el.if
 
   // OR when it is inside another scoped slot or v-for (the reactivity may be
@@ -528,6 +532,7 @@ function genScopedSlots (
   })`
 }
 
+// DJB2 hash算法，用于字符串hash
 function hash(str) {
   let hash = 5381
   let i = str.length
@@ -537,6 +542,7 @@ function hash(str) {
   return hash >>> 0
 }
 
+// 监测子元素是否有插槽
 function containsSlotChild (el: ASTNode): boolean {
   if (el.type === 1) {
     if (el.tag === 'slot') {
@@ -569,8 +575,8 @@ function genScopedSlot (
       : genElement(el, state)
     }}`
   // reverse proxy v-slot without scope on this.$slots
+  // 对于没有作用域的v-slot增加反向代理属性{proxy: true}
   const reverseProxy = slotScope ? `` : `,proxy:true`
-  debugger
   return `{key:${el.slotTarget || `"default"`},fn:${fn}${reverseProxy}}`
 }
 

@@ -71,7 +71,7 @@
     <div>
         <!-- {{msg}} {{ title}} -->
         <layout>
-          <template v-slot:ok>ok</template>
+          <template v-slot:ok="op">ok</template>
           <h1 slot="header">{{title}}</h1>
           <p>{{msg}}</p>
           <p slot="footer">{{footer}}</p>

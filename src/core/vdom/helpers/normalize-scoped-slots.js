@@ -14,19 +14,20 @@ export function normalizeScopedSlots (
   const isStable = slots ? !!slots.$stable : true
   const hasNormalSlots = Object.keys(normalSlots).length > 0 // 是否有普通插槽
   const key = slots && slots.$key
-  if (!slots) {
+  if (!slots) { // 没有作用域插槽
     res = {}
-  } else if (slots._normalized) {
+  } else if (slots._normalized) { // 已经处理过了且只有子元素发生了变化，只要重新渲染子元素
     // fast path 1: child component re-render only, parent did not change
     return slots._normalized
   } else if (
-    isStable &&
-    prevSlots &&
+    isStable && // 没有动态的key
+    prevSlots && // 有上一次处理后的作用域插槽
     prevSlots !== emptyObject && // 不是初次规范化
-    key === prevSlots.$key &&
-    !hasNormalSlots &&
-    !prevSlots.$hasNormal
+    key === prevSlots.$key && // key没有发生变化
+    !hasNormalSlots && // 没有普通插槽
+    !prevSlots.$hasNormal // 上一次也没有普通插槽
   ) {
+    // 综上，对于没有普通插槽代理在$scopedSlots的插槽，只需要规范化一次就可以了
     // fast path 2: stable scoped slots w/ no normal slots to proxy,
     // only need to normalize once
     return prevSlots
@@ -49,11 +50,11 @@ export function normalizeScopedSlots (
   // avoriaz seems to mock a non-extensible $scopedSlots object
   // and when that is passed down this would cause an error
   if (slots && Object.isExtensible(slots)) {
-    (slots: any)._normalized = res
+    (slots: any)._normalized = res // 标记规范化后的结果
   }
-  def(res, '$stable', isStable)
-  def(res, '$key', key)
-  def(res, '$hasNormal', hasNormalSlots)
+  def(res, '$stable', isStable) // 标记是否为稳固的插槽（没有动态插槽）
+  def(res, '$key', key) // key
+  def(res, '$hasNormal', hasNormalSlots) // 标记是否有普通插槽
   return res
 }
 

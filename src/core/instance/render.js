@@ -102,7 +102,7 @@ export function renderMixin (Vue: Class<Component>) {
     // 走到这里，vm.$slots在initRender的时候已经做了分组处理，
     // 而vm.$scopedSlots初始化时为空对象，后续则为上一次的执行结果
     // _parentVnode.data.scopedSlots则也是已经分组的作用域插槽节点的集合(函数)
-    // @suspense
+    // 处理完成后$slots和$scopedSlots都包含了所有的插槽，其中$scopedSlots是以函数的形式存储的插槽
     if (_parentVnode) {
       vm.$scopedSlots = normalizeScopedSlots(
         _parentVnode.data.scopedSlots,
@@ -164,6 +164,8 @@ export function renderMixin (Vue: Class<Component>) {
       vnode = createEmptyVNode()
     }
     // set parent
+    // 绑定父子关系vnode.parent = vm.$vnode
+    // vm._vnode = vnode
     vnode.parent = _parentVnode
     return vnode
   }
