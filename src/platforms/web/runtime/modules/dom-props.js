@@ -5,19 +5,23 @@ import { isSVG } from 'web/util/index'
 
 let svgContainer
 
+// 用于更新原生的prop属性
 function updateDOMProps (oldVnode: VNodeWithData, vnode: VNodeWithData) {
+  // 新老节点均没有DOMProps
   if (isUndef(oldVnode.data.domProps) && isUndef(vnode.data.domProps)) {
     return
   }
   let key, cur
   const elm: any = vnode.elm
-  const oldProps = oldVnode.data.domProps || {}
-  let props = vnode.data.domProps || {}
+  const oldProps = oldVnode.data.domProps || {} // 旧节点的DOMProps
+  let props = vnode.data.domProps || {} // 新节点的DOMProps
   // clone observed objects, as the user probably wants to mutate it
+  // 具有观察者的对象，则拷贝后再使用
   if (isDef(props.__ob__)) {
     props = vnode.data.domProps = extend({}, props)
   }
 
+  // 移除不再需要的旧DOMProps
   for (key in oldProps) {
     if (isUndef(props[key])) {
       elm[key] = ''
@@ -28,6 +32,7 @@ function updateDOMProps (oldVnode: VNodeWithData, vnode: VNodeWithData) {
     // ignore children if the node has textContent or innerHTML,
     // as these will throw away existing DOM nodes and cause removal errors
     // on subsequent patches (#3360)
+    // 处理textContent/innerHTML
     if (key === 'textContent' || key === 'innerHTML') {
       if (vnode.children) vnode.children.length = 0
       if (cur === oldProps[key]) continue
@@ -43,12 +48,14 @@ function updateDOMProps (oldVnode: VNodeWithData, vnode: VNodeWithData) {
       // non-string values will be stringified
       elm._value = cur
       // avoid resetting cursor position when value is the same
+      // 避免值相同时重置光标
       const strCur = isUndef(cur) ? '' : String(cur)
       if (shouldUpdateValue(elm, strCur)) {
         elm.value = strCur
       }
     } else if (key === 'innerHTML' && isSVG(elm.tagName) && isUndef(elm.innerHTML)) {
       // IE doesn't support innerHTML for SVG elements
+      // IE 的SVG元素不支持innerHTML
       svgContainer = svgContainer || document.createElement('div')
       svgContainer.innerHTML = `<svg>${cur}</svg>`
       const svg = svgContainer.firstChild

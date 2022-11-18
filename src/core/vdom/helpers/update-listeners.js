@@ -44,6 +44,7 @@ const normalizeEvent = cached((name: string): {
 
 // 创建事件调用者，该调用者可以捕获错误，包括Promise错误
 // 由于父组件的事件绑定回调函数是外部定义的，不能保证正确执行，所以需要做一些错误捕获
+// 真实的执行函数被放置在invoker.fns中
 export function createFnInvoker (fns: Function | Array<Function>, vm: ?Component): Function {
   function invoker () {
     const fns = invoker.fns // 获取回调函数

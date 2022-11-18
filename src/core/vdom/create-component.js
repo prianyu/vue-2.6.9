@@ -34,6 +34,10 @@ import {
 
 // inline hooks to be invoked on component VNodes during patch
 // patch期间在组件的VNode上执行的内联钩子
+// patch时，在创建元素的时候，会调用createComponent(vnode,...)函数
+// 如果是一个子组件，则会执行子组件的init钩子，从而时子组件实现挂载
+// 彼处会拿到子组件的componentInstance做后续的处理，如插入钩子等
+// 并创建子组件的真实DOM，插入到父元素中
 const componentVNodeHooks = {
   init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
     if (
@@ -47,7 +51,7 @@ const componentVNodeHooks = {
     } else { // 子组件初始化
       // createComponentInstanceForVnode会调用 new Ctor(options)，进而会调用实例的_init方法
       // _init方法最后如果判断有$options.el会自动挂载，子组件是没有el的，所以会手动挂载
-      // 最后创建的Vue实例会实例存在占位VNode的.componentInstance属性上面，后续从此处取值渲染
+      // 最后创建的Vue实例会存在占位VNode的.componentInstance属性上面，后续从此处取值渲染
       const child = vnode.componentInstance = createComponentInstanceForVnode(
         vnode,
         activeInstance

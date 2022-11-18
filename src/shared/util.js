@@ -148,7 +148,7 @@ export function remove (arr: Array<any>, item: any): Array<any> | void {
 }
 
 /**
- * 检测某个对象是否包含了某个属性
+ * 检测某个对象自身是否包含了某个属性
  */
 const hasOwnProperty = Object.prototype.hasOwnProperty
 export function hasOwn (obj: Object | Array<*>, key: string): boolean {

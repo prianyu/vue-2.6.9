@@ -19,6 +19,7 @@ export const parseStyleText = cached(function (cssText) {
 })
 
 // merge static and dynamic style data on the same vnode
+// 将静态的style和动态的style合并
 function normalizeStyleData (data: VNodeData): ?Object {
   const style = normalizeStyleBinding(data.style)
   // static style is pre-processed into an object during compilation
@@ -29,11 +30,12 @@ function normalizeStyleData (data: VNodeData): ?Object {
 }
 
 // normalize possible array / string values into Object
+// 将数组和字符串格式的style转为对象格式
 export function normalizeStyleBinding (bindingStyle: any): ?Object {
-  if (Array.isArray(bindingStyle)) {
+  if (Array.isArray(bindingStyle)) { // 数组转对象
     return toObject(bindingStyle)
   }
-  if (typeof bindingStyle === 'string') {
+  if (typeof bindingStyle === 'string') { // 字符串转对象
     return parseStyleText(bindingStyle)
   }
   return bindingStyle
@@ -42,11 +44,18 @@ export function normalizeStyleBinding (bindingStyle: any): ?Object {
 /**
  * parent component style should be after child's
  * so that parent component's style could override it
+ * 父组件的样式会优先与子组件
+ * 如
+ * Foo: {template: '<div style="border: 1px solid red;"></div>'}
+ * Bar: {template: '<foo style="border: 1px solid yellow;" />'}
+ * Baz: {template: '<bar style="border: 1px solid blue "/>}
+ * <baz style="border: 1px solid green" />
+ * 以上在处理div的元素时，会先处理的顺序是red->yellow->blue->green
+ * 所以最后是最外层的baz样式会覆盖最里层定义的div的样式，结果为：1px solid green
  */
 export function getStyle (vnode: VNodeWithData, checkChild: boolean): Object {
   const res = {}
   let styleData
-
   if (checkChild) {
     let childNode = vnode
     while (childNode.componentInstance) {
@@ -60,6 +69,7 @@ export function getStyle (vnode: VNodeWithData, checkChild: boolean): Object {
     }
   }
 
+  // 合并静态和动态的style
   if ((styleData = normalizeStyleData(vnode.data))) {
     extend(res, styleData)
   }

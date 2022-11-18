@@ -25,6 +25,7 @@ const app = new Vue({
 */
 
 
+
 // --------模板解析测试用例
 /** 
 const app = new Vue({
@@ -106,6 +107,28 @@ Vue.component('Layout', {
                   </footer>
               </div>`
 })
+Vue.component("input1", {
+  template: "<input placeholder='a' v-focus.a.b  class='input' style='border: 1px solid red;'/>",
+  created: function() {
+    console.log("created")
+  },
+  activated: function() {
+    console.log('activated')
+  },
+  directives: {
+    focus: {
+      inserted: function(el) {
+        el.focus()
+      }
+    }
+  },
+})
+Vue.component("input3", {
+  template: "<input1  style='border: 1px solid purple'/>"
+})
+Vue.component("input2", {
+  template: "<input placeholder='b'/>"
+})
 
 const app = new Vue({
   data() {
@@ -113,7 +136,15 @@ const app = new Vue({
       // ok: true,
       title: "这里是标题",
       msg: "这里是内容",
+      type: 'a'
       // footer: "这里是footer"      
+    }
+  },
+  directives: {
+    focus: {
+      inserted: function(el) {
+        el.focus()
+      }
     }
   },
   computed: {

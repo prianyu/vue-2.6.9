@@ -10,18 +10,21 @@ import { currentFlushTimestamp } from 'core/observer/scheduler'
 // it's important to place the event as the first in the array because
 // the whole point is ensuring the v-model callback gets called before
 // user-attached handlers.
+// 规范化只能在运行时确定的“v-model"事件的标记
+// 将事件作为数组中的第一个事件使很重要的，因为关键是确保在用户附加处理程序之前调用”v-model"回调
 function normalizeEvents (on) {
   /* istanbul ignore if */
-  if (isDef(on[RANGE_TOKEN])) {
+  if (isDef(on[RANGE_TOKEN])) { // on.__r
     // IE input[type=range] only supports `change` event
     const event = isIE ? 'change' : 'input'
     on[event] = [].concat(on[RANGE_TOKEN], on[event] || [])
     delete on[RANGE_TOKEN]
   }
+  // 向后兼容处理
   // This was originally intended to fix #4521 but no longer necessary
   // after 2.5. Keeping it for backwards compat with generated code from < 2.4
   /* istanbul ignore if */
-  if (isDef(on[CHECKBOX_RADIO_TOKEN])) {
+  if (isDef(on[CHECKBOX_RADIO_TOKEN])) {// on.__c
     on.change = [].concat(on[CHECKBOX_RADIO_TOKEN], on.change || [])
     delete on[CHECKBOX_RADIO_TOKEN]
   }
@@ -44,6 +47,7 @@ function createOnceHandler (event, handler, capture) {
 // safe to exclude.
 const useMicrotaskFix = isUsingMicroTask && !(isFF && Number(isFF[1]) <= 53)
 
+// 添加事件
 function add (
   name: string,
   handler: Function,
@@ -80,6 +84,7 @@ function add (
       }
     }
   }
+  //
   target.addEventListener(
     name,
     handler,
@@ -89,6 +94,7 @@ function add (
   )
 }
 
+// 移除事件
 function remove (
   name: string,
   handler: Function,
@@ -102,14 +108,16 @@ function remove (
   )
 }
 
+// 更新新老vnode的事件监听
 function updateDOMListeners (oldVnode: VNodeWithData, vnode: VNodeWithData) {
-  if (isUndef(oldVnode.data.on) && isUndef(vnode.data.on)) {
+  if (isUndef(oldVnode.data.on) && isUndef(vnode.data.on)) { // 都没有事件不处理
     return
   }
-  const on = vnode.data.on || {}
-  const oldOn = oldVnode.data.on || {}
-  target = vnode.elm
-  normalizeEvents(on)
+  const on = vnode.data.on || {} // 新事件
+  const oldOn = oldVnode.data.on || {} // 老节点事件
+  target = vnode.elm // DOM节点
+  normalizeEvents(on) // 规范化v-model的事件
+  // 更新事件
   updateListeners(on, oldOn, add, remove, createOnceHandler, vnode.context)
   target = undefined
 }

@@ -5,6 +5,14 @@
   <!-- <meta http-equiv="X-UA-Compatible" content="IE=edge"> -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
+  <style>
+    .fade-enter-active, .fade-leave-active {
+      transition: opacity .5s;
+    }
+    .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+      opacity: 0;
+    }
+  </style>
 </head>
 <body>
   <!-- <custom>
@@ -67,9 +75,8 @@
     <!-- <custom></custom> -->
 
     <!-- 示例 resolveSlots -->
-
+    <!--
     <div>
-        <!-- {{msg}} {{ title}} -->
         <layout>
           <template v-slot:ok="op">ok</template>
           <h1 slot="header">{{title}}</h1>
@@ -77,8 +84,36 @@
           <p slot="footer">{{footer}}</p>
           <p>{{msg}}</p>
         </layout>
-        <!-- {{com}} -->
-    </div>
+    </div>-->
+
+    <!-- keep-alive reactivateComponent测试 -->
+    <!-- <div>
+      <div><span @click="type = 'a'">A</span><span @click="type='b'">B</span></div>
+      <keep-alive>
+        <input1 v-if="type === 'a'"></input1>
+        <input2 v-else>
+      </keep-alive>
+    </div> -->
+
+    <!-- class合并测试 -->
+    <!-- <div>
+      <div><span @click="type = 'a'">A</span><span @click="type='b'">B</span></div>
+      <keep-alive>
+        <input1 v-if="type === 'a'" :class="['class1', 'class2', {class3: title}]"></input1>
+        <input2 v-else></input2>
+      </keep-alive>
+    </div> -->
+
+    <!-- style合并测试 -->
+    
+    <bar style="background: red;border: 1px solid yellow;">
+      <div><span @click="type = 'a'">A</span><span @click="type='b'">B</span></div>
+      <transition name="fade">
+        <input3 key="input3" v-if="type === 'a'" :class="['class1', 'class2', {class3: title}]" style="background: blue;border: 1px solid blue;"></input3>
+        <input2 key="input2" v-else></input2>
+      </transition>
+        
+    </bar>
 
 
     <!-- <pre id="pre" style="background: red;"> -->

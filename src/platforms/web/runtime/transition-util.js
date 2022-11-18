@@ -4,6 +4,8 @@ import { inBrowser, isIE9 } from 'core/util/index'
 import { addClass, removeClass } from './class-util'
 import { remove, extend, cached } from 'shared/util'
 
+// 解析transition
+// 得到transition各种状态的CSS名称以及事件回调等信息
 export function resolveTransition (def?: string | Object): ?Object {
   if (!def) {
     return
@@ -21,6 +23,7 @@ export function resolveTransition (def?: string | Object): ?Object {
   }
 }
 
+// 获取中状态的CSS名称
 const autoCssTransition: (name: string) => Object = cached(name => {
   return {
     enterClass: `${name}-enter`,
@@ -37,6 +40,7 @@ const TRANSITION = 'transition'
 const ANIMATION = 'animation'
 
 // Transition property/event sniffing
+// 对transition和animation属性及其事件名的嗅探
 export let transitionProp = 'transition'
 export let transitionEndEvent = 'transitionend'
 export let animationProp = 'animation'
@@ -58,6 +62,7 @@ if (hasTransition) {
 }
 
 // binding to window is necessary to make hot reload work in IE in strict mode
+// 动画的api名称
 const raf = inBrowser
   ? window.requestAnimationFrame
     ? window.requestAnimationFrame.bind(window)
@@ -70,14 +75,16 @@ export function nextFrame (fn: Function) {
   })
 }
 
+// 添加指定的transition样式类名
 export function addTransitionClass (el: any, cls: string) {
   const transitionClasses = el._transitionClasses || (el._transitionClasses = [])
   if (transitionClasses.indexOf(cls) < 0) {
     transitionClasses.push(cls)
-    addClass(el, cls)
+    addClass(el, cls) // 添加对应的类名
   }
 }
 
+// 删除指定的样式类名
 export function removeTransitionClass (el: any, cls: string) {
   if (el._transitionClasses) {
     remove(el._transitionClasses, cls)
@@ -90,9 +97,10 @@ export function whenTransitionEnds (
   expectedType: ?string,
   cb: Function
 ) {
+  // 获取动画的信息{动画类型，timeout，需要执行动画的属性的个数}
   const { type, timeout, propCount } = getTransitionInfo(el, expectedType)
   if (!type) return cb()
-  const event: string = type === TRANSITION ? transitionEndEvent : animationEndEvent
+  const event: string = type === TRANSITION ? transitionEndEvent : animationEndEvent // 动画结束事件名
   let ended = 0
   const end = () => {
     el.removeEventListener(event, onEnd)
@@ -110,25 +118,27 @@ export function whenTransitionEnds (
       end()
     }
   }, timeout + 1)
-  el.addEventListener(event, onEnd)
+  el.addEventListener(event, onEnd) // 添加事件回调
 }
 
 const transformRE = /\b(transform|all)(,|$)/
 
+// 获取动画的各种信息
 export function getTransitionInfo (el: Element, expectedType?: ?string): {
   type: ?string;
   propCount: number;
   timeout: number;
   hasTransform: boolean;
 } {
-  const styles: any = window.getComputedStyle(el)
+  const styles: any = window.getComputedStyle(el) // 获取所有的样式
   // JSDOM may return undefined for transition properties
-  const transitionDelays: Array<string> = (styles[transitionProp + 'Delay'] || '').split(', ')
-  const transitionDurations: Array<string> = (styles[transitionProp + 'Duration'] || '').split(', ')
+  const transitionDelays: Array<string> = (styles[transitionProp + 'Delay'] || '').split(', ') // transition delay
+  const transitionDurations: Array<string> = (styles[transitionProp + 'Duration'] || '').split(', ') // transition duration
   const transitionTimeout: number = getTimeout(transitionDelays, transitionDurations)
-  const animationDelays: Array<string> = (styles[animationProp + 'Delay'] || '').split(', ')
-  const animationDurations: Array<string> = (styles[animationProp + 'Duration'] || '').split(', ')
+  const animationDelays: Array<string> = (styles[animationProp + 'Delay'] || '').split(', ') // animation delay
+  const animationDurations: Array<string> = (styles[animationProp + 'Duration'] || '').split(', ') // animation duration
   const animationTimeout: number = getTimeout(animationDelays, animationDurations)
+  debugger
 
   let type: ?string
   let timeout = 0
@@ -163,15 +173,16 @@ export function getTransitionInfo (el: Element, expectedType?: ?string): {
     type === TRANSITION &&
     transformRE.test(styles[transitionProp + 'Property'])
   return {
-    type,
-    timeout,
-    propCount,
-    hasTransform
+    type, // 动画类型
+    timeout, // timeout
+    propCount, // 需要执行动画的属性个数
+    hasTransform // 是否有transform
   }
 }
 
 function getTimeout (delays: Array<string>, durations: Array<string>): number {
   /* istanbul ignore next */
+
   while (delays.length < durations.length) {
     delays = delays.concat(delays)
   }
@@ -185,6 +196,9 @@ function getTimeout (delays: Array<string>, durations: Array<string>): number {
 // in a locale-dependent way, using a comma instead of a dot.
 // If comma is not replaced with a dot, the input will be rounded down (i.e. acting
 // as a floor function) causing unexpected behaviors
+// 旧版本的Chromium内核使用逗号来格式化浮点
+// 如果不将逗号替换为点可能会发生意外的行为
+// 转为毫秒
 function toMs (s: string): number {
   return Number(s.slice(0, -1).replace(',', '.')) * 1000
 }
