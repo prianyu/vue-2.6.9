@@ -969,14 +969,15 @@ export function createPatchFunction (backend) {
 
         // update parent placeholder node element, recursively
         // 递归更新父级占位节点
+        // 有parent说明是嵌套的组件
         if (isDef(vnode.parent)) {
           let ancestor = vnode.parent
           const patchable = isPatchable(vnode)
           while (ancestor) {
-            for (let i = 0; i < cbs.destroy.length; ++i) {
+            for (let i = 0; i < cbs.destroy.length; ++i) { // 递归执行销毁钩子
               cbs.destroy[i](ancestor)
             }
-            ancestor.elm = vnode.elm
+            ancestor.elm = vnode.elm // 更新最新的DOM节点
             if (patchable) {
               for (let i = 0; i < cbs.create.length; ++i) {
                 cbs.create[i](emptyNode, ancestor)

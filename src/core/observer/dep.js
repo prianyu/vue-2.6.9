@@ -33,7 +33,7 @@ export default class Dep {
     remove(this.subs, sub)
   }
 
-  // 收集依赖，在当前Wathcer中反向记录当前的依赖收集器
+  // 收集依赖，在当前Watcher中反向记录当前的依赖收集器
   depend () {
     if (Dep.target) {
       Dep.target.addDep(this)

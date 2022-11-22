@@ -44,7 +44,7 @@ export function initLifecycle (vm: Component) {
   // locate first non-abstract parent
   // 绑定父子关系，只有非抽象的组件才会被作为父级组件
   let parent = options.parent
-  if (parent && !options.abstract) {
+  if (parent && !options.abstract) { // 组件自身也不是抽象的
     while (parent.$options.abstract && parent.$parent) {
       parent = parent.$parent
     }
@@ -52,13 +52,13 @@ export function initLifecycle (vm: Component) {
   }
 
   vm.$parent = parent
-  vm.$root = parent ? parent.$root : vm // 登记根实例
+  vm.$root = parent ? parent.$root : vm // 记录根实例
 
   vm.$children = [] // 用于存放子组件
   vm.$refs = {} // $refs
 
   vm._watcher = null // 渲染watcher
-  vm._inactive = null // 组件是否处于keepAlive
+  vm._inactive = null // 组件是否已失活
   vm._directInactive = false
   vm._isMounted = false // 是否已挂载
   vm._isDestroyed = false // 是否已销毁
@@ -253,10 +253,10 @@ export function mountComponent (
 // 更新子组件
 export function updateChildComponent (
   vm: Component,
-  propsData: ?Object,
-  listeners: ?Object,
-  parentVnode: MountedComponentVNode,
-  renderChildren: ?Array<VNode>
+  propsData: ?Object, // 新的父组件传递给子组件的props
+  listeners: ?Object, // 新的父组件传递给子组件的事件
+  parentVnode: MountedComponentVNode,  // 新的父vnode节点
+  renderChildren: ?Array<VNode> // 新的渲染子元素
 ) {
   if (process.env.NODE_ENV !== 'production') {
     isUpdatingChildComponent = true // 标记为正在更新子组件，用于判断props不能被直接修改的提醒
@@ -268,8 +268,9 @@ export function updateChildComponent (
   // check if there are dynamic scopedSlots (hand-written or compiled but with
   // dynamic slot names). Static scoped slots compiled from template has the
   // "$stable" marker.
-  const newScopedSlots = parentVnode.data.scopedSlots
-  const oldScopedSlots = vm.$scopedSlots
+  const newScopedSlots = parentVnode.data.scopedSlots // 新的作用域插槽
+  const oldScopedSlots = vm.$scopedSlots // 旧的作用域插槽
+  // 是否有动态的作用域插槽
   const hasDynamicScopedSlot = !!(
     (newScopedSlots && !newScopedSlots.$stable) ||
     (oldScopedSlots !== emptyObject && !oldScopedSlots.$stable) ||
@@ -279,23 +280,28 @@ export function updateChildComponent (
   // Any static slot children from the parent may have changed during parent's
   // update. Dynamic scoped slots may also have changed. In such cases, a forced
   // update is necessary to ensure correctness.
+  // 标记是否需要强制更新
   const needsForceUpdate = !!(
     renderChildren ||               // has new static slots
     vm.$options._renderChildren ||  // has old static slots
     hasDynamicScopedSlot
   )
 
-  vm.$options._parentVnode = parentVnode
+  // 更新父vnode
+  vm.$options._parentVnode = parentVnode 
   vm.$vnode = parentVnode // update vm's placeholder node without re-render
 
+  // 有旧的渲染节点，更新其父节点的引用
   if (vm._vnode) { // update child tree's parent
     vm._vnode.parent = parentVnode
   }
+  // 更新渲染的子元素
   vm.$options._renderChildren = renderChildren
 
   // update $attrs and $listeners hash
   // these are also reactive so they may trigger child update if the child
   // used them during render
+  // 更新$attrs和$listeners
   vm.$attrs = parentVnode.data.attrs || emptyObject
   vm.$listeners = listeners || emptyObject
 
@@ -316,12 +322,14 @@ export function updateChildComponent (
   }
 
   // update listeners
+  // 更新事件
   listeners = listeners || emptyObject
   const oldListeners = vm.$options._parentListeners
   vm.$options._parentListeners = listeners
   updateComponentListeners(vm, listeners, oldListeners)
 
   // resolve slots + force update if has children
+  // 强制更新
   if (needsForceUpdate) {
     vm.$slots = resolveSlots(renderChildren, parentVnode.context)
     vm.$forceUpdate()
@@ -332,31 +340,40 @@ export function updateChildComponent (
   }
 }
 
+// 判断实例是否处于已经失活的实例树里面
 function isInInactiveTree (vm) {
+  // 递归查找祖先实例是否已经失活
   while (vm && (vm = vm.$parent)) {
     if (vm._inactive) return true
   }
   return false
 }
 
+// 激活组件keep-alive包裹的子组件
 export function activateChildComponent (vm: Component, direct?: boolean) {
   if (direct) {
     vm._directInactive = false
+    // 在失活的节点树上， 不处理
     if (isInInactiveTree(vm)) {
       return
     }
   } else if (vm._directInactive) {
     return
   }
+  // 失活了或者还未设置_inactive
+  // _inactive初始化时是null
   if (vm._inactive || vm._inactive === null) {
-    vm._inactive = false
+    vm._inactive = false // 标记_inactive为false
+    // 递归激活子元素，此时的direct参数是undefined
     for (let i = 0; i < vm.$children.length; i++) {
       activateChildComponent(vm.$children[i])
     }
+    // 执行activated钩子
     callHook(vm, 'activated')
   }
 }
 
+// 失活组件
 export function deactivateChildComponent (vm: Component, direct?: boolean) {
   if (direct) {
     vm._directInactive = true
@@ -364,28 +381,36 @@ export function deactivateChildComponent (vm: Component, direct?: boolean) {
       return
     }
   }
-  if (!vm._inactive) {
-    vm._inactive = true
+  if (!vm._inactive) { // 已经是激活的状态
+    vm._inactive = true // 标记为失活状态
+    // 递归失活子组件
     for (let i = 0; i < vm.$children.length; i++) {
       deactivateChildComponent(vm.$children[i])
     }
+    // 执行deactivated钩子
     callHook(vm, 'deactivated')
   }
 }
 
+// 执行钩子的函数
 export function callHook (vm: Component, hook: string) {
   // #7573 disable dep collection when invoking lifecycle hooks
   // Dep.target置空处理，该bug的解析见 ./state.js中getData函数的解析
   pushTarget()
+  // 获取相应要执行的钩子
   const handlers = vm.$options[hook]
   const info = `${hook} hook`
-  if (handlers) {
+  // 遍历并执行钩子
+  if (handlers) { 
     for (let i = 0, j = handlers.length; i < j; i++) {
       invokeWithErrorHandling(handlers[i], vm, null, vm, info)
     }
   }
+  // 如果有hook:event事件回调，则执行对应的hook事件回调
+  // 如<modal @hook:mouted="handleMounted" />
   if (vm._hasHookEvent) {
     vm.$emit('hook:' + hook)
   }
+  // 恢复Dep.target
   popTarget()
 }

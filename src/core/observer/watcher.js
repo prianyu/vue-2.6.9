@@ -58,7 +58,7 @@ export default class Watcher {
     // options
     if (options) {
       this.deep = !!options.deep // 是否深度监听
-      this.user = !!options.user // 是否为$watcherd定义
+      this.user = !!options.user // 是否为$watch定义
       this.lazy = !!options.lazy // 是否惰性计算
       this.sync = !!options.sync // 是否同步监听
       this.before = options.before // 执行前的钩子
@@ -132,13 +132,14 @@ export default class Watcher {
    * Add a dependency to this directive.
    * 添加dep
    */
-  addDep (dep: Dep) {
+  addDep (dep: Dep) {                
     const id = dep.id
     // 如果新的dep集合中不包含dep， 则添加给dep，可避免重复收集
     if (!this.newDepIds.has(id)) {
       this.newDepIds.add(id)
       this.newDeps.push(dep)
-      if (!this.depIds.has(id)) { // 如果旧的dep中不包含该dep，则在dep里添加该watcher
+      // 如果旧的dep中不包含该dep，则在dep里添加该watcher
+      if (!this.depIds.has(id)) { 
         dep.addSub(this)
       }
     }
@@ -150,7 +151,7 @@ export default class Watcher {
    */
   cleanupDeps () {
     let i = this.deps.length
-    // 如果上次求值时收集的依赖在当前求值时没有的依赖，则将其移除掉
+    // 如果上次求值时收集的依赖在当前求值时没有依赖，则将其移除掉
     while (i--) { 
       const dep = this.deps[i]
       if (!this.newDepIds.has(dep.id)) {

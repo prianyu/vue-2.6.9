@@ -35,10 +35,12 @@ import {
 // inline hooks to be invoked on component VNodes during patch
 // patch期间在组件的VNode上执行的内联钩子
 // patch时，在创建元素的时候，会调用createComponent(vnode,...)函数
-// 如果是一个子组件，则会执行子组件的init钩子，从而时子组件实现挂载
+// 如果是一个子组件，则会执行子组件的init钩子，从而使子组件实现挂载
 // 彼处会拿到子组件的componentInstance做后续的处理，如插入钩子等
 // 并创建子组件的真实DOM，插入到父元素中
 const componentVNodeHooks = {
+  // 初始化内联钩子
+  // 该钩子执行完会执行组件实例的_init方法，进而执行$mount方法，实现组件的初始化和挂载
   init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
     if (
       vnode.componentInstance &&
@@ -69,27 +71,30 @@ const componentVNodeHooks = {
     updateChildComponent(
       child,
       options.propsData, // updated props，由父组件传递给子组件的props数据
-      options.listeners, // updated listeners
-      vnode, // new parent vnode
-      options.children // new children
+      options.listeners, // updated listeners，有父组件传递给子组件的事件监听
+      vnode, // new parent vnode // 新的vnode节点
+      options.children // new children // 新的vnode节点的子元素
     )
   },
 
+  // vnode被插入的钩子
   insert (vnode: MountedComponentVNode) {
     const { context, componentInstance } = vnode
-    if (!componentInstance._isMounted) {
+    // 初次挂载，标记为mounted状态，并执行mounted钩子
+    if (!componentInstance._isMounted) { 
       componentInstance._isMounted = true
       callHook(componentInstance, 'mounted')
     }
+    // 处于keep-alive的组件挂载
     if (vnode.data.keepAlive) {
-      if (context._isMounted) {
+      if (context._isMounted) { // 更新
         // vue-router#1212
         // During updates, a kept-alive component's child components may
         // change, so directly walking the tree here may call activated hooks
         // on incorrect children. Instead we push them into a queue which will
         // be processed after the whole patch process ended.
         queueActivatedComponent(componentInstance)
-      } else {
+      } else { // 初次挂载，激活
         activateChildComponent(componentInstance, true /* direct */)
       }
     }
@@ -267,7 +272,7 @@ export function createComponentInstanceForVnode (
     parent
   }
   // check inline-template render functions
-  // @suspense
+  // 内联组件模板的render相关函数是存在inlineTemplate上的，不是在组件自身
   const inlineTemplate = vnode.data.inlineTemplate
   if (isDef(inlineTemplate)) {
     options.render = inlineTemplate.render
@@ -291,6 +296,9 @@ function installComponentHooks (data: VNodeData) {
   }
 }
 
+// 合并钩子
+// 最终会返回一个新的函数，新的函数执行所有的钩子函数
+// 合并后返回的函数会有_merged标记
 function mergeHook (f1: any, f2: any): Function {
   const merged = (a, b) => {
     // flow complains about extra args which is why we use any

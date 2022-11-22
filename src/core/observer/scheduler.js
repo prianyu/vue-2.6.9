@@ -156,8 +156,8 @@ function callUpdatedHooks (queue) {
 export function queueActivatedComponent (vm: Component) {
   // setting _inactive to false here so that a render function can
   // rely on checking whether it's in an inactive tree (e.g. router-view)
-  vm._inactive = false
-  activatedChildren.push(vm)
+  vm._inactive = false // 在失活状态标记为false
+  activatedChildren.push(vm) // 将当前实例添加至待激活的队列
 }
 
 // 执行keep-alive的activated生命周期

@@ -100,7 +100,7 @@ export function renderMixin (Vue: Class<Component>) {
     // _parentVnode不为空，说明是子组件（使用VueComponent创建过来的）
     // 对其插槽做规范化处理
     // 走到这里，vm.$slots在initRender的时候已经做了分组处理，
-    // 而vm.$scopedSlots初始化时为空对象，后续则为上一次的执行结果
+    // 而vm.$scopedSlots初始化时为空对象，后续则作为上一次的执行结果
     // _parentVnode.data.scopedSlots则也是已经分组的作用域插槽节点的集合(函数)
     // 处理完成后$slots和$scopedSlots都包含了所有的插槽，其中$scopedSlots是以函数的形式存储的插槽
     if (_parentVnode) {
