@@ -115,7 +115,7 @@ function flushSchedulerQueue () {
   }
 
   // keep copies of post queues before resetting state
-  // 重置队列之前保留已经执行更新的队列副本
+  // 重置队列之前保留需要执行activated钩子的子元素
   const activatedQueue = activatedChildren.slice()
   const updatedQueue = queue.slice()
 
@@ -134,7 +134,7 @@ function flushSchedulerQueue () {
 }
 
 
-// 执行updated钩子
+// 执行每一个组件实例的updated钩子
 function callUpdatedHooks (queue) {
   let i = queue.length
   while (i--) {
@@ -163,7 +163,8 @@ export function queueActivatedComponent (vm: Component) {
 // 执行keep-alive的activated生命周期
 function callActivatedHooks (queue) {
   for (let i = 0; i < queue.length; i++) {
-    queue[i]._inactive = true
+    queue[i]._inactive = true // 先标记为失活状态
+    // 激活组件
     activateChildComponent(queue[i], true /* true */)
   }
 }
@@ -179,7 +180,7 @@ export function queueWatcher (watcher: Watcher) {
   const id = watcher.id // 观察者id
   if (has[id] == null) { // 队列中没有该观察者
     has[id] = true // 队列中标记该观察者
-    if (!flushing) { // 如果还没刷新，则将观察者压入队列
+    if (!flushing) { // 如果还没刷新，则将观察 者压入队列
       queue.push(watcher)
     } else {
       // if already flushing, splice the watcher based on its id

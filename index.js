@@ -133,6 +133,12 @@ Vue.component("input2", {
 const app = new Vue({
   data() {
     return {
+      obj: {
+        a: 1,
+        b: {
+          c: 'c'
+        }
+      },
       // ok: true,
       title: "这里是标题",
       msg: "这里是内容",
@@ -170,6 +176,7 @@ const app = new Vue({
 })
 
 app.$mount("#app")
+// app.$set(app.$data, 'mam', 'mam')
 
 console.log(app)
 

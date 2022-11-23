@@ -46,7 +46,9 @@ export class Observer {
   constructor (value: any) {
     this.value = value // 保存原有对象的引用
     this.dep = new Dep() // 创建一个依赖收集器
-    this.vmCount = 0 // 初始化的实例应用计数为0，vmCount > 0，$set 方法不进行处理
+    // 初始化的实例应用计数为0，vmCount > 0，$set 方法不进行处理
+    // 只有根数据才会增加vmCount计数，根数据实例化后不允许被直接替换
+    this.vmCount = 0 
     // 使用属性描述对象，往被观察的对象添加__ob__属性，引用当前创建的观察者实例，
     //__ob__是不可以枚举的
     def(value, '__ob__', this) 
@@ -126,8 +128,7 @@ function copyAugment (target: Object, src: Object, keys: Array<string>) {
  * returns the new observer if successfully observed,
  * or the existing observer if the value already has one.
  * 为一个数据创建一个数据监测器（只有引用类型的数据才会创建）
- * 如果已经创建过则返回旧的监测器
- * 否则返回创建的监测器
+ * 如果已经创建过则返回旧的监测器，否则返回创建的监测器
  * 创建后的数据会有一个__ob__属性
  * __ob__里会有一个dep对象属性用于收集依赖
  */
@@ -151,7 +152,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
   if (asRootData && ob) { // 实例的根数据，则ob的实例引用数+1
     // vmCount大于0则说明其为根数据，在操作上会有一些限制
     // Vue.set和Vue.del方法会判断vmCount是否大于0，来决定是否处理
-    //也就是Vue.set和Vue.del是无法直接对根数据的key进行响应式处理的
+    // 也就是Vue.set和Vue.del是无法直接对根数据的key进行处理的
     ob.vmCount++
   }
   return ob
@@ -161,6 +162,10 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
  * Define a reactive property on an Object.
  * 将一个对象定义为响应式的getter/setter，
  * 并定义依赖收集器
+ * 对于数组，不会执行Observer的walk方法，进而不会调用defineReactive函数，
+ * 但是数组中的项如果是引用类型，会递归调用observe
+ * 因此数组中的项如果是原始类型，则不会有getter和setter，也就不会有dep的引用；
+ * 而引用类型的项里都会有__ob__，也就有__ob__.dep
  * 举例：
  * obj = {
  *    __ob__: Observer // 对象会有一个__ob__属性，__ob__.dep保存着obj的Dep 
@@ -175,7 +180,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
  *        // arr会有一个闭包的dep，而arr又是对象，所以会有__ob__.dep
  *        // 基本类型的数组成员是没有dep的，也没有闭包的dep，所以arr[1] = 2这里写法不能触发更新
  *        1,2,3,4,5
- *        // 引用类型的成员有__ob__.dep，但是数组没有闭包的dep引用
+ *        // 引用类型的成员有__ob__.dep，但是没有闭包的dep引用
  *        {
  *          item: 'item',
  *          __ob__: Observer // 是引用类型，所以有__ob__.dep的引用
@@ -228,7 +233,7 @@ export function defineReactive (
    * 3. 见下方#mark-2如果obj[val]只有getter没有setter时，说明只是访问器属性，但是后续使用Object.defineProperty又定义了setter，
    * 同时对新值又做了深度观测，这个是不合逻辑的，因此，在set中又增加了一个if (getter && !setter) return的条件
    * 
-   */
+  */
   // #mark-1
   // 如果只有getter，就不会走这个逻辑，此时val为undefined，即val不会被深度监测
   if ((!getter || setter) && arguments.length === 2) {
@@ -237,21 +242,36 @@ export function defineReactive (
 
   //对val进行深度观测，得到的值为childOb，即为val.__ob__, childOb会被闭包引用
   // 由于observe方法又会调用defineReactive,所以本质上这里是个递归
+  // 最终子属性都会被转为getter/setter
   let childOb = !shallow && observe(val)
 
   Object.defineProperty(obj, key, {
     enumerable: true, //可枚举
     configurable: true, // 可删除
     get: function reactiveGetter () {
+      console.log(obj, key)
       const value = getter ? getter.call(obj) : val // 优先从getter取值
       if (Dep.target) { // 收集当前watcher
         //  dep.depend()会调用Dep.target.addDep(Dep.target)，将dep收集反向收集到watcher中
        // Dep.target.addDep(Dep.target)又会调用dep的，会将Dep.target添加至dep.subs中，从而实现依赖的收集
        // 调用完毕后Dep.target的deps也存放着dep列表，这个反向收集的dep列表，在watcher被销毁时，可以清空dep
+       // 闭包的dep收集一次依赖，这样当obj[key]直接变化时可以触发依赖的更新
         dep.depend() 
         if (childOb) {
+          // 走到这里说明获取到的值是一个引用类型，其__ob__.dep也会收集一次当前的watcher
+          // 为什么这里需要重复收集呢？因为当前对于obj[key]的依赖收集是在闭包的dep上
+          // 当obj[key]是个对象时，如果后续我们动态的往obj[key]新增一个属性，我们会使用vm.$set方法来实现
+          // 但是vm.$set方法是无法获取到当前闭包的dep的，即无法获取依赖，也就无法触发watcher的更新
+          // 因此，而obj[key].__ob__本身也具有一个dep，可以借助这个dep来动态的实现属性的更新
+          // 如 obj = {a: 1, b: 2} , <div>{{obj}}</div>
+          // 在渲染时读取obj时会触发obj，obj.a,obj.b的getter，三者的闭包的dep都会收集当前的渲染watcher
+          // 假如没有以下语句，则 vm.$set(obj, 'c', 3)无法触发渲染watcher更新
           childOb.dep.depend() //收集子dep
-          if (Array.isArray(value)) { // 如果是数组，则通过数据项的__ob__.dep.depend收集依赖
+          // 如果是数组，则通过数据项的__ob__.dep.depend收集依赖
+          // 由于数据的项是没有闭包的dep的，对于项如果是引用类型的话，同理也是需要将watcher收集到每一项的__ob__.dep里面，
+          // 用于后续动态新增属性
+          // 对于vm.$delete也是同样的道理
+          if (Array.isArray(value)) { 
             dependArray(value)
           }
         }
@@ -379,9 +399,12 @@ export function del (target: Array<any> | Object, key: any) {
 /**
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
- * 对于数组，由于我们不能像对象那样对属性进行拦截访问，所以在访问数组的时候，
- * 可以通过数据项存储的__ob__来获取到dep进行依赖收集
- * 
+ * 数组的可以借助变异方法实现拦截，数组的项是没有闭包的dep的，
+ * 因此我们不能像对象那样对属性进行拦截访问。
+ * 对于引用类型的数组项，虽然其没有闭包的dep，但是有__ob__.dep
+ * 可以通过数据项存储的__ob__来获取到dep进行依赖收集，
+ * 这样在后续如果有为数组的项进行动态新增属性或者和删除属性时，我们就可以
+ * 通过__ob__.dep上收集到的依赖来触发依赖的更新
  */
 function dependArray (value: Array<any>) {
   for (let e, i = 0, l = value.length; i < l; i++) {

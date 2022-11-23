@@ -106,15 +106,16 @@
 
     <!-- style合并测试 -->
     
-    <bar style="background: red;border: 1px solid yellow;">
+    <!-- <bar style="background: red;border: 1px solid yellow;">
       <div><span @click="type = 'a'">A</span><span @click="type='b'">B</span></div>
       <transition name="fade">
         <input3 key="input3" v-if="type === 'a'" :class="['class1', 'class2', {class3: title}]" style="background: blue;border: 1px solid blue;"></input3>
         <input2 key="input2" v-else></input2>
       </transition>
         
-    </bar>
-
+    </bar> -->
+    <!-- observer -->
+    {{obj}}
 
     <!-- <pre id="pre" style="background: red;"> -->
     <!-- <div v-for="(item, key, index) in lists" key="key">{{item}}</div>

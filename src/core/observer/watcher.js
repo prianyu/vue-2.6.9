@@ -233,9 +233,10 @@ export default class Watcher {
   }
 
   /**
-   * Depend on all deps collected by this watcher.
+   * Depend on all deps collected by this watcher.     
+   * 收集该watcher的所有依赖  
    */
-  depend () {
+  depend () { 
     let i = this.deps.length
     while (i--) {
       this.deps[i].depend()
@@ -253,7 +254,7 @@ export default class Watcher {
       // if the vm is being destroyed.
       // 在实例vm中删除watcher的依赖是一个昂贵的操作，如果vm已经已经被销毁了就跳过
 
-      // 还没销毁，在vm_.watchers中当前watcher
+      // 还没销毁，在vm_.watchers中移除当前watcher
       if (!this.vm._isBeingDestroyed) {
         remove(this.vm._watchers, this)
       }
