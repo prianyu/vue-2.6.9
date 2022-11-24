@@ -317,7 +317,7 @@ export function validateComponentName (name: string) {
  * Object-based format.
  */
 // props规范化
-// 会将[string, string]和{ key: "String"}这种格式统一转为
+// 会将[string, string]、{ key: "String"}， {key: { type: String } } 这种格式统一转为
 // {key: {type: String}}的格式
 function normalizeProps (options: Object, vm: ?Component) {
   const props = options.props
@@ -448,11 +448,23 @@ export function mergeOptions (
   // 没有_base属性，说明child是一个原始的选项对象，而不是另一个mergeOptions处理后的结果
   // child._base是在initGlobalAPI的时候添加至options的，其值为Vue
   // 合并时是将extends和mixins合并至parent，合并后的parent已经是一个新的对象
+  // 由于会递归调用mergeOptions，所以mixins和extends是支持嵌套的
+
+  // 由于extends比mixin先处理，mixins又比组件实例的选项先处理，所以合并后的一些选项
+  // 的优先级是extends > mixins > component，比如created钩子
+  // 而对于一些使用覆盖合并策略的选项，则component会覆盖mixins，mixins会覆盖extends，如props、data、methods
   if (!child._base) {
-    if (child.extends) { // 合并extends
+    // 合并extends
+    // extend用于声明扩展另一个组件 (可以是一个简单的选项对象或构造函数)，
+    // 而无需使用 Vue.extend。这主要是为了便于扩展单文件组件
+    if (child.extends) { 
       parent = mergeOptions(parent, child.extends, vm)
     }
-    if (child.mixins) { // 合并mixins
+     // 合并mixins
+     // mixins里每一项的格式都是options一致，按照声明的顺序合并至parent
+     // 相同的options选项会合并，最终parant会变成一个合并后的新的options，
+     // 后续child也有对应的options选项时，则也可以覆盖掉parent对应的options选项
+    if (child.mixins) {
       for (let i = 0, l = child.mixins.length; i < l; i++) {
         parent = mergeOptions(parent, child.mixins[i], vm)
       }

@@ -353,6 +353,7 @@ export function set (target: Array<any> | Object, key: any, val: any): any {
   // 如果对象是响应式的，检测新添加的属性值
   defineReactive(ob.value, key, val)
   // 对象变化了，触发通知更新
+  // 这里也是为什么对于obj[key].__ob__.dep要重复收集一次依赖的原因
   ob.dep.notify()
   // 返回设置的值
   return val

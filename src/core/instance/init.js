@@ -33,7 +33,7 @@ export function initMixin (Vue: Class<Component>) {
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
-      // _isComponent是在渲染阶段解析到子组件时内部实例化组件添加的一个属性
+      // _isComponent是在渲染阶段解析到子组件时内部实例化组件时添加的一个属性
       // 选项合并是比较耗时的，所以对于内部的创建的组件，做了特别的合并处理
       // 这样可以提高选项合并的性能
       initInternalComponent(vm, options)
