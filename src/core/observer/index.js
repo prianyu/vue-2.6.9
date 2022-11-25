@@ -22,7 +22,14 @@ const arrayKeys = Object.getOwnPropertyNames(arrayMethods) // 数组变异方法
 /**
  * In some cases we may want to disable observation inside a component's
  * update computation.
- * 在某些情况下我们可能希望禁用组件的观测 @supense
+ * 在某些情况下我们可能希望禁用组件的观测的
+ * 比如子组件的props本身通常是来自于父组件的data，当然也可以是其他的来源，比如直接指定一个对象或者其他数据
+ * 由于props是不能被直接修改的，因此我们也无需对传进来的props进行深度观测
+ * 但是在初始化props时会调用defineReactive函数将vm._props上的数据进行getter/setter的转换，
+ * defineReactive执行时会执行let childOb = !shallow && observe(val)，对属性值进行递归检测，此时就会触发val被深度观测，
+ * 通过全局的一个shouldObserve来标记当前数据是否需要被观测，在适当的时机关闭观测，在observe中新增一个条件可以达到此目的
+ * 除了props外，像inject的实例化也是相似的道理，因为inject通常来源于父组件的data
+ * 对于在data中已经深度观测的数据，传到props中时，依然是响应式的
  */
 export let shouldObserve: boolean = true
 
@@ -249,7 +256,6 @@ export function defineReactive (
     enumerable: true, //可枚举
     configurable: true, // 可删除
     get: function reactiveGetter () {
-      console.log(obj, key)
       const value = getter ? getter.call(obj) : val // 优先从getter取值
       if (Dep.target) { // 收集当前watcher
         //  dep.depend()会调用Dep.target.addDep(Dep.target)，将dep收集反向收集到watcher中
@@ -262,7 +268,7 @@ export function defineReactive (
           // 为什么这里需要重复收集呢？因为当前对于obj[key]的依赖收集是在闭包的dep上
           // 当obj[key]是个对象时，如果后续我们动态的往obj[key]新增一个属性，我们会使用vm.$set方法来实现
           // 但是vm.$set方法是无法获取到当前闭包的dep的，即无法获取依赖，也就无法触发watcher的更新
-          // 因此，而obj[key].__ob__本身也具有一个dep，可以借助这个dep来动态的实现属性的更新
+          // 而obj[key].__ob__本身也具有一个dep，因此，可以借助这个dep来动态的实现属性的更新
           // 如 obj = {a: 1, b: 2} , <div>{{obj}}</div>
           // 在渲染时读取obj时会触发obj，obj.a,obj.b的getter，三者的闭包的dep都会收集当前的渲染watcher
           // 假如没有以下语句，则 vm.$set(obj, 'c', 3)无法触发渲染watcher更新

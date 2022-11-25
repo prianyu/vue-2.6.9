@@ -115,8 +115,10 @@
         
     </bar> -->
     <!-- observer -->
-    {{obj}}
-
+    <!-- {{obj}} -->
+    <!-- props init -->
+    <prop :person="getPerson()"> </prop>
+    <prop :person="lisi"> </prop>
     <!-- <pre id="pre" style="background: red;"> -->
     <!-- <div v-for="(item, key, index) in lists" key="key">{{item}}</div>
      -->
@@ -133,6 +135,9 @@ test
     test
         sdgs</pre> -->
   </div>
+  <script>
+    person = {name: {last: 'zhangsan'}}
+  </script>
   <script src="./dist/vue.js?version=2"></script>
   <script src="./index.js"></script>
 </body>

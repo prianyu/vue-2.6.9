@@ -29,7 +29,7 @@ export function initExtend (Vue: GlobalAPI) {
     // 构造器选项中会添加一个_Ctor属性，会缓存基于当前父类继承的子类构造器
     // 如果缓存中已经存在则直接返回构造器
     // 也就是同一个基类，同一个构造器选项只会被执行一次
-    // 也就是extendOptions是可以被用于多次创建子类构造器的，因此，在后续的处理中，需要将
+    // 也说明extendOptions是可以被用于多次创建子类构造器的，因此，在后续的处理中，需要将
     // extendOptions选项直接合并至最终的子类构造器选项，而不是简单的引用这个extendOptions
     const cachedCtors = extendOptions._Ctor || (extendOptions._Ctor = {})
     if (cachedCtors[SuperId]) {

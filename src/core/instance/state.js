@@ -82,7 +82,7 @@ function initProps (vm: Component, propsOptions: Object) {
   // root instance props should be converted
   if (!isRoot) {
     toggleObserving(false)
-  }
+  } 
   for (const key in propsOptions) {
     keys.push(key) // 缓存key
     // 值的合法性检测并获取值
@@ -189,7 +189,7 @@ export function getData (data: Function, vm: Component): any {
    * 当执行data.call(vm,vm)获取子组件的data时，因为引用了父组件传进来的props数据，会触发其props的getter，造成了
    * props收集依赖。由于数据的初始化的时机是介于beforeCreate和create之间，此时子组件还未进入渲染阶段（即渲染Watcher未生成）
    * 因为渲染Watcher是在挂载时调用mountComponent函数生成的，因此，此时的Dep.target指向的依然是父组件的渲染Watcher。
-   * 最终表现就是父组件的数据更新时，正确的触发了一次父组件的渲染Watcher的update，更新子组件的props时，又触发了一次父组件的渲染Watcher的update/
+   * 最终表现就是父组件的数据更新时，正确的触发了一次父组件的渲染Watcher的update，更新子组件的props时，又触发了一次父组件的渲染Watcher的update
    * 在第一次更新以后，后续的依赖收集中，子组件的渲染Watcher已经存在了，所以不会收集到父组件的渲染Watcher。
    * 
    * 这个bug不仅仅存在于此，子组件的beforeCreate，created，beforeMounted这三个生命周期如果用了props的话，都会出现一样的问题，

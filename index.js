@@ -130,9 +130,19 @@ Vue.component("input2", {
   template: "<input placeholder='b'/>"
 })
 
+Vue.component("prop", {
+  props: ['person'],
+  template: "<div>{{ person.name }}</div>"
+})
+
 const app = new Vue({
   data() {
     return {
+      person: {
+        name:{
+          last: 'name'
+        }
+      },
       obj: {
         a: 1,
         b: {
@@ -144,6 +154,11 @@ const app = new Vue({
       msg: "这里是内容",
       type: 'a'
       // footer: "这里是footer"      
+    }
+  },
+  methods: {
+    getPerson() {
+      return window.person
     }
   },
   directives: {
@@ -163,6 +178,7 @@ const app = new Vue({
     }
   },
   created: function(){
+    this.lisi = {person: {name: "lisi"}}
     setTimeout(() => {
       this.msg = "hello,world"
     }, 3000)
