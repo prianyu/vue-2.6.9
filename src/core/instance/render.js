@@ -107,7 +107,7 @@ export function renderMixin (Vue: Class<Component>) {
       vm.$scopedSlots = normalizeScopedSlots(
         _parentVnode.data.scopedSlots,
         vm.$slots,
-        vm.$scopedSlots
+        vm.$scopedSlots // 上一次的$scopedSlots，初始化为空对象                                              
       )
     }
 

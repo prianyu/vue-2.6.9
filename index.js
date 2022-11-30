@@ -86,11 +86,19 @@ const Baz = {
   template: `<h1>Baz<slot></slot></h1>`
 }
 
+const Sub = Vue.extend({
+  data() {
+    return  {
+      fengshan: 'fengshang'
+    }
+  }
+})
+
 Vue.component("custom", {
   template: "<div>{{my}}</div>",
   data() {
     return {
-      my: 'hash'
+      my: 'custom'
     }
   }
 })
@@ -130,12 +138,53 @@ Vue.component("input2", {
   template: "<input placeholder='b'/>"
 })
 
+Vue.component("render", {
+  render(h) {
+    return h("div", {a: '124'}, ['3',function() {
+      return '哈哈'
+    }, 'oo', function() {
+      return 'cc'
+    }])
+  }
+})
+
 Vue.component("prop", {
   props: ['person'],
   template: "<div>{{ person.name }}</div>"
 })
 
-const app = new Vue({
+Sub.component("xiaohai", {
+  data() {
+    return {
+      ok: 'ok'
+    }
+    
+  }
+})
+
+Vue.component("hoc", {
+  template: "<div><h1>title</h1><slot></slot></div>"
+})
+
+Vue.component("patch", {
+  template: `<custom v-if="type == 1" /><v-else custom2 />`,
+  data() {
+    return {
+      type: 1
+    }
+  },
+  created() {
+    setTimeout(() => {
+      this.type = 0
+    }, 3000)
+  }
+  
+})
+Vue.component("custom2", {
+  template: "<div>custom2</div>"
+})
+
+const app = new Sub({
   data() {
     return {
       person: {

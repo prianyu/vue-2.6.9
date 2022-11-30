@@ -16,6 +16,7 @@ import { createEmptyVNode } from 'core/vdom/vnode'
 import { currentRenderingInstance } from 'core/instance/render'
 
 // 确保组件创建
+// 如果传入的组件是个对象，则会使用Vue.extend创建构造器，否则会当作构造器处理
 function ensureCtor (comp: any, base) {
   if (
     comp.__esModule ||
@@ -45,8 +46,31 @@ export function createAsyncPlaceholder (
 /**
  * 处理异步组件
  * @param {Function} 异步函数 
- * @param {Component} Vue 
+ * @param {Component} Vue构造器
  * @returns {undefined | Component}
+ * 1. 已经解析了且解析成功了则直接返回解析成功的组件；解析失败了，如果有传入失败的组件，则直接返回失败组件，否则会重新解析
+ * 2. 还未解析成功或者解析失败且未传入失败组件：
+ * 如果是第一次解析组件则执行以下操作：
+ * （1）添加factory.owners属性，用于存放使用到该异步组件的正在渲染的实例
+ * （2）将当前的渲染实例（owner）压入owners中
+ * （3）初始化一个sync=true标记，用于标记执行的factory是不是一个同步函数
+ * （4）当前实例增加一个destroyed钩子监听器，执行后会从owners移owner
+ * （5）定义一个强制更新函数forceRender，用于在异步组件解析完毕后，强制更新所有的owners实例
+ * （6）定义解析成功回调resolve，将解析成功的结果存储起来，如果此时sync是true，说明factory是同步执行，Vue会自动更新，直接清空owners就可以了；否则执行forceRender，强制更新所有的实例，并清空owners
+ * （7）定义解析失败的回调reject，如果有提供了失败组件，则会清空owners增加一个factory.error=true标记，后续解析会直接将解析失败的组件返回
+ * （8）执行factory函数，得到执行结果res，如果执行不为空则做如下处理：
+ *    （8-1）如果res是Promise，则将resolve和reject作为回调传入给res.then
+ *    （8-2）如果res.component是个Promise，resolve和reject作为回调传入给res.component.then，此时的res为一个对象，是可以传入其他配置的。
+ *           如果传入了error组件，则将其绑定在factory.errorComp上，在错误回调里可以获取到；
+ *           如果传入了loading组件，则将其绑定在factory.loadingComp上，下次解析时可以直接返回loading状态的组件，假如没有传delay配置，则同步设置loading状态，否则会开启一个定时器，在指定时间内，如果未解析完毕，则会展示loading，执行forceRender强制更新实例；
+ *           如果传递了timeout，在此时间段内如果未解析完毕，则当作解析出错来处理
+ *    （9）最终会根据是否传入loading选择返回loading还是factory.resolved，此结果是可能为undefined的，代表为解析完成，接收的地方会返回一个占位符
+ * （9）将sync标记为false，如果factory是同步的，执行factory进入到resolve回调，判断为false，所以factory是异步的
+ * 如果不是第一次解析组件，则执行以下操作：
+ * （1）factory上会添加owners属性，用于存放使用到该异步组件的正在渲染的实例
+ * （2）将当前的渲染实例压入owners中
+ * （3）如果组件正在解析的过程中且传入loading组件，则会返回loading组件
+ *
  */
 export function resolveAsyncComponent (
   factory: Function, 
@@ -109,7 +133,7 @@ export function resolveAsyncComponent (
       // (async resolves are shimmed as synchronous during SSR)
       if (!sync) { // 非同步解析的时，执行强制更新实例的回调
         forceRender(true)
-      } else { // 同步更新时直接清空onwers
+      } else { // 同步更新时直接清空owners
         owners.length = 0
       }
     })

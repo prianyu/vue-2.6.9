@@ -156,7 +156,9 @@ function callUpdatedHooks (queue) {
 export function queueActivatedComponent (vm: Component) {
   // setting _inactive to false here so that a render function can
   // rely on checking whether it's in an inactive tree (e.g. router-view)
-  vm._inactive = false // 在失活状态标记为false
+  // 将失活状态标记为false
+  // 在一些渲染函数（比如router-view组件）在激活组件或者失活组件时会检测节点是否处于失活的节点树上
+  vm._inactive = false 
   activatedChildren.push(vm) // 将当前实例添加至待激活的队列
 }
 

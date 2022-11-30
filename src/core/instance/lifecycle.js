@@ -96,6 +96,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     }
     // if parent is an HOC, update its $el as well
     // 父节点是个高阶组件，则更新其元素节点
+    //  @suspense
     if (vm.$vnode && vm.$parent && vm.$vnode === vm.$parent._vnode) {
       vm.$parent.$el = vm.$el
     }

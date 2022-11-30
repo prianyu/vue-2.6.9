@@ -34,7 +34,7 @@ import {
 
 // inline hooks to be invoked on component VNodes during patch
 // patch期间在组件的VNode上执行的内联钩子
-// patch时，在创建元素的时候，会调用createComponent(vnode,...)函数
+// patch时，在创建元素的时候，会调用createComponent(vnode,...)函数（core/vdom/patch.js）
 // 如果是一个子组件，则会执行子组件的init钩子，从而使子组件实现挂载
 // 彼处会拿到子组件的componentInstance做后续的处理，如插入钩子等
 // 并创建子组件的真实DOM，插入到父元素中
@@ -54,6 +54,8 @@ const componentVNodeHooks = {
       // createComponentInstanceForVnode会调用 new Ctor(options)，进而会调用实例的_init方法
       // _init方法最后如果判断有$options.el会自动挂载，子组件是没有el的，所以会手动挂载
       // 最后创建的Vue实例会存在占位VNode的.componentInstance属性上面，后续从此处取值渲染
+      // componentInstance会与父实例、父占位Vnode绑定父子关系
+      // 同时会添加_isComponent: true属性，在_init执行选项合并时会根据该选项，选择内部组件的合并策略
       const child = vnode.componentInstance = createComponentInstanceForVnode(
         vnode,
         activeInstance
@@ -93,27 +95,43 @@ const componentVNodeHooks = {
         // change, so directly walking the tree here may call activated hooks
         // on incorrect children. Instead we push them into a queue which will
         // be processed after the whole patch process ended.
+        // 更新的时候，存在keep-alive组件的子元素可能会改变，如果直接激活组件，则可能会激活
+        // 不正确的子元素，所以先把他们放入到一个队列中，等到整个树patch完成后再执行
         queueActivatedComponent(componentInstance)
-      } else { // 初次挂载，激活
+      } else { // 初次挂载，激活，执行activated钩子
         activateChildComponent(componentInstance, true /* direct */)
       }
     }
   },
 
+  // 销毁钩子
   destroy (vnode: MountedComponentVNode) {
     const { componentInstance } = vnode
     if (!componentInstance._isDestroyed) {
-      if (!vnode.data.keepAlive) {
+      if (!vnode.data.keepAlive) { // 不在keep-alive的组件，执行$destroy
         componentInstance.$destroy()
-      } else {
+      } else { // 在keep-alive的组件，执行失活
         deactivateChildComponent(componentInstance, true /* direct */)
       }
     }
   }
 }
 
+// 所有钩子的key
 const hooksToMerge = Object.keys(componentVNodeHooks)
 
+
+/**
+ * 创建元素（组件 | 普通元素）
+ * @param {*} Ctor 子组件构造器，可以是一个组件对象，也可以是一个函数（异步组件）
+ * @param {*} data 创建组件的data，可能为空
+ * @param {*} context 组件实例上下文，一般为render函数所在的vm实例
+ * @param {*} children // 子元素
+ * @param {*} tag 标签名，可能为空
+ * @returns VNode | Array<VNode> | undefined
+ * 1. 解析子组件构造器，对于Ctor是构造器对象的，会使用Vue.extend转为构造器。解析后的结果必须为一个函数（有没cid属性的，为异步组件）
+ * 2. 对于异步组件，在组件解析完毕之前会返回一个占位的注释VNode节点，节点中保留了节点的各种信息，包括异步的工厂函数
+ */
 export function createComponent (
   Ctor: Class<Component> | Function | Object | void,
   data: ?VNodeData,
@@ -152,6 +170,8 @@ export function createComponent (
    *        resolve({template: "<div>I am async</div>"})
    *    }) 
    * })
+   * 异步组件解析后，在解析完成之前，返回值为undefined，此时会渲染一个占位的注释节点
+   * 如果已经解析完成了（可能执行时是同步的，或者已经解析过了），则会返回一个构造函数
   */
 
   let asyncFactory
@@ -182,7 +202,7 @@ export function createComponent (
   resolveConstructorOptions(Ctor)
 
   // transform component v-model data into props & events
-  // 格式化v-model的配置
+  // 转换v-model的配置，处理成prop+event的形式
   if (isDef(data.model)) {
     transformModel(Ctor.options, data)
   }
@@ -223,6 +243,7 @@ export function createComponent (
 
   // install component management hooks onto the placeholder node
   // 安装patch时的相关钩子，会将componentVNodeHooks与data.hook做合并处理
+  // 这些钩子安装后，在patch阶段，会在对应的时机进行调用
   installComponentHooks(data)
 
   // return a placeholder vnode
@@ -241,9 +262,12 @@ export function createComponent (
    // 创建的这个vnode是没有children的
   const name = Ctor.options.name || tag
   const vnode = new VNode(
-    `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
+    `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`, // 占位节点的标签名
+    // 占位节点不传children，text，elm
     data, undefined, undefined, undefined, context,
+    // 但是其componentOptions保存这children以及其他props、events等信息
     { Ctor, propsData, listeners, tag, children },
+    // 异步组件才有这个
     asyncFactory
   )
 
@@ -255,6 +279,7 @@ export function createComponent (
     return renderRecyclableComponentTemplate(vnode)
   }
 
+  // 返回创建的节点
   return vnode
 }
 
@@ -285,7 +310,7 @@ export function createComponentInstanceForVnode (
 // 组件的钩子合并
 function installComponentHooks (data: VNodeData) {
   const hooks = data.hook || (data.hook = {})
-  //hooksToMerge = ['init'、'prepatch'、'insert'、'destroy']
+  //hooksToMerge = ['init'、'prepatch'、'insert'、'destroy']，所有钩子的key
   for (let i = 0; i < hooksToMerge.length; i++) {
     const key = hooksToMerge[i]
     const existing = hooks[key]
@@ -312,6 +337,8 @@ function mergeHook (f1: any, f2: any): Function {
 // transform component v-model info (value and callback) into
 // prop and event handler respectively.
 // 将v-model的信息转化为prop和event的格式
+// 处理后的prop放在data.attrs上，处理后的event放置在data.on上
+// 对于event，如果本身已经有该事件的回调，则会合并事件回调
 function transformModel (options, data: any) {
   const prop = (options.model && options.model.prop) || 'value'
   const event = (options.model && options.model.event) || 'input'

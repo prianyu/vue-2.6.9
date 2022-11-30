@@ -50,12 +50,12 @@ export function FunctionalRenderContext (
   const needNormalization = !isCompiled // 是否需要规范化
 
   // 上下文里包含data,props,children,parent,listeners,injections,$slots,$scopedSlots,$options
-  this.data = data
-  this.props = props
-  this.children = children
-  this.parent = parent
+  this.data = data // 传递给组件的整个数据对象，作为 createElement 的第二个参数传入组件
+  this.props = props // 供所有 prop 的对象
+  this.children = children // VNode 子节点的数组
+  this.parent = parent // 对父组件的引用
   this.listeners = data.on || emptyObject // 父组件注册的所有事件监听，为data.on的别名
-  this.injections = resolveInject(options.inject, parent)
+  this.injections = resolveInject(options.inject, parent) //  如果使用了 inject 选项，则该对象包含了应当被注入的 property
   // @suspense
   // 用于获取$slots的函数，返回结果为一个包含了所有插槽的对象
   this.slots = () => {
@@ -105,12 +105,15 @@ export function FunctionalRenderContext (
 installRenderHelpers(FunctionalRenderContext.prototype)
 
 // 创建函数式组件
+// 1. 设置props
+// 2. 设置渲染上下文，传递给render函数
+// 3. 执行render函数生成VNode
 export function createFunctionalComponent (
-  Ctor: Class<Component>,
-  propsData: ?Object,
-  data: VNodeData,
-  contextVm: Component,
-  children: ?Array<VNode>
+  Ctor: Class<Component>, // 构造函数
+  propsData: ?Object, // props数据
+  data: VNodeData, // data
+  contextVm: Component, // 上下文
+  children: ?Array<VNode> // 子节点
 ): VNode | Array<VNode> | void {
   const options = Ctor.options
   const props = {}
@@ -137,6 +140,7 @@ export function createFunctionalComponent (
   // 函数式组件的render函数的this为null，其createElement为渲染上线文的_c函数，第二个参数为渲染上下文本身
   const vnode = options.render.call(null, renderContext._c, renderContext)
 
+  // 在生成的VNode对象上添加一些标记，表示该VNode是一个函数式组件生成的，最后返回VNode
   if (vnode instanceof VNode) {
     return cloneAndMarkFunctionalResult(vnode, data, renderContext.parent, options, renderContext)
   } else if (Array.isArray(vnode)) {
