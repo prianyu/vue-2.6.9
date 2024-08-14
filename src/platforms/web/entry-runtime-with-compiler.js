@@ -9,24 +9,30 @@ import { query } from './util/index'
 import { compileToFunctions } from './compiler/index'
 import { shouldDecodeNewlines, shouldDecodeNewlinesForHref } from './util/compat'
 
+// 根据id获取元素的innerHTML
 const idToTemplate = cached(id => {
-  const el = query(id)
-  return el && el.innerHTML
+  const el = query(id) // 获取元素
+  return el && el.innerHTML // 获取innerHTML
 })
 
-// 重写$mount方法
-// 传入el，最终el会被作为挂载元素，自动执行挂载，因此获取的是outerHTML
-// 传入的template，最终需要提供一个挂载节点（手动挂载或者传入el自动挂载），因此，其获取的是innerHTML
+// 重写Vue原型上的$mount方法，用于挂载元素
+// 挂载方法会优先使用render函数，其次是template，最后才是el
+// 如果没有render函数，则会将template转为render函数
+// 如果template也没有，则会通过el获取template再转为render函数
+// 当使用template时，如果template传入的是id选择器或者DOM节点，使用的该节点的innerHTML，
+// 因为此时节点被当作是存放模板的元素，可能是一个不可渲染的元素，如<script type="x-template" id="template"></script>
+// 另外使用template后应用需要手动挂在到指定的el上
+// 而当使用的是el，获取的是outerHTML，这是因为el本身在挂在时会被作为挂在点，在实例后也会进行自动执行挂载
 const mount = Vue.prototype.$mount
 Vue.prototype.$mount = function (
-  el?: string | Element,
-  hydrating?: boolean
+  el?: string | Element, // 挂载元素
+  hydrating?: boolean // 是否为服务端渲染
 ): Component {
   
   el = el && query(el) // 获取元素
 
   /* istanbul ignore if */
-  // 不能挂在在body或者html标签下
+  // 不能挂载在body或者html标签下
   if (el === document.body || el === document.documentElement) {
     process.env.NODE_ENV !== 'production' && warn(
       `Do not mount Vue to <html> or <body> - mount to normal elements instead.`
@@ -34,41 +40,42 @@ Vue.prototype.$mount = function (
     return this
   }
 
-  const options = this.$options
+  const options = this.$options // 配置选项
   // 没有传入render函数，则会将template或者el转为render函数
   if (!options.render) {
     let template = options.template
-    if (template) { 
-      // template只能是字符串或者DOM类型
-      // 传入template且以#开头则会后去对应的id的元素的innerHTML
-      // 传入的template为dom节点则直接获取其innerHTML
+    if (template) {  // 传入template
       if (typeof template === 'string') { 
+        // 当template是以#开头时，被用作选择符，提取其innerHTML作为模板
+        // 通常这么使用<script type="x-template" id="app"></script>，所以实际的模板内容是innerHTML
         if (template.charAt(0) === '#') {
           template = idToTemplate(template)
           /* istanbul ignore if */
-          if (process.env.NODE_ENV !== 'production' && !template) {
+          if (process.env.NODE_ENV !== 'production' && !template) { // 没找到元素或者元素为空
             warn(
               `Template element not found or is empty: ${options.template}`,
               this
             )
           }
         }
-      } else if (template.nodeType) {
+      } else if (template.nodeType) { 
+        // template为DOM节点，认为是一个存放模板的元素，也是获取其innerHTML
         template = template.innerHTML
-      } else {
+      } else { // 不是DOM也不是字符串
         if (process.env.NODE_ENV !== 'production') {
           warn('invalid template option:' + template, this)
         }
         return this
       }
-    } else if (el) { 
-      // 没有传入template但传入el则将el的outerHTML赋值给template
-      template = getOuterHTML(el)
+    } else if (el) {  
+      // 没有传入template但是传入了el
+      template = getOuterHTML(el) // 将template设置为元素的outerHTML
     }
-    // 经过以上转化后template应该为一串html字符串
+    // 经过以上转化后template应该为一串html字符串或者空字符串
+    // 如果不为空将template编译为render函数
     if (template) {
-      // 将template编译为render函数
       /* istanbul ignore if */
+      // 开始编译的性能统计开始标识
       if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
         mark('compile')
       }
@@ -85,6 +92,7 @@ Vue.prototype.$mount = function (
       options.staticRenderFns = staticRenderFns // 生成静态节点的render函数组成的数组 
 
       /* istanbul ignore if */
+      // 模板编译结束的性能统计结束标识
       if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
         mark('compile end')
         measure(`vue ${this._name} compile`, 'compile', 'compile end')
@@ -110,7 +118,7 @@ function getOuterHTML (el: Element): string {
   }
 }
 
-// 增加compile静态方法
+// 在Vue构造函数上增加compile静态方法
 Vue.compile = compileToFunctions
 
 export default Vue
