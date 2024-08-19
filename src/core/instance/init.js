@@ -10,14 +10,19 @@ import { initLifecycle, callHook } from './lifecycle'
 import { initProvide, initInjections } from './inject'
 import { extend, mergeOptions, formatComponentName } from '../util/index'
 
-// 全局自增的uid，每一个vm示例都有一个_uid属性，有uid从0开始递增得到
+// 全局自增的uid，每一个vm示例都有一个_uid属性，由uid从0开始递增得到
 let uid = 0
-
+// 在Vue原型添加_init方法，方法在组件实例化时传入实例化选项调用
+// 1. 实例上增加_uid属性，该属性是一个递增自增的属性
+// 2. 添加_isVue属性，标记为Vue组件，具有该标记的对象后续不会做响应式数据转换
+// 3. 选项合并，子组件和非子组件使用不同的选项合并策略
+// 4. 
 export function initMixin (Vue: Class<Component>) {
   Vue.prototype._init = function (options?: Object) {
     const vm: Component = this
     vm._uid = uid++ // 每个Vue实例都会有一个uid， 由0开始自增
 
+    // 实例化性能监控
     let startTag, endTag
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
@@ -34,7 +39,7 @@ export function initMixin (Vue: Class<Component>) {
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
       // _isComponent是在渲染阶段解析到子组件时内部实例化组件时添加的一个属性
-      // 选项合并是比较耗时的，所以对于内部的创建的组件，做了特别的合并处理
+      // 选项合并是比较耗时的，所以对于内部创建的组件，做了特别的合并处理
       // 这样可以提高选项合并的性能
       initInternalComponent(vm, options)
     } else { // 非子组件选项合并
@@ -53,12 +58,10 @@ export function initMixin (Vue: Class<Component>) {
 
     /* istanbul ignore else */
     // vm._renderProxy 用于后续执行_render方法
+    // 开发环境下增强vm实例，在支持Proxy环境下，返回一个vm的代理对象
+    // 使其支持属性定义的合法性($、_开头)以及未定义变量访问时的错误提醒
     if (process.env.NODE_ENV !== 'production') {
-      // 开发环境会给出一些提醒，比如属性名不能以$和_开头
-      // 渲染时使用了为定义的属性
-      // initProxy最终也会在vm上增加一个_rednerProxy属性
-      // 但是该属性具有拦截器，拦截了以上的一些操作，并在适当时候给提醒
-      initProxy(vm)
+      initProxy(vm)// initProxy最终也会在vm上增加一个_renderProxy属性
     } else {
       vm._renderProxy = vm
     }

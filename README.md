@@ -12,7 +12,7 @@ src
 ```
 ## 主流程
 ### （1）实例化阶段
-1. Vue实例化，会执行vm.init，会添加_uid,_isVue,_self,_renderProxy等属性，并执行以下流程
+1. Vue实例化，会执行`vm._init`方法，会添加_uid,_isVue,_self,_renderProxy等属性，并执行以下流程
 2. 选项合并，合并过程中会按照子组件合和非子组件做不同的合并策略
 3. 执行initLifecycle(vm)，初始化一些与组件生命周期相关的属性和方法，如$parent,$children,$root,$_watcher,_inactive,_isMounted,_isDestroyed等
 4. 执行initEvent(vm)，初始化一些与事件相关的属性，子组件会根据父组件绑定的属性进行初始化，如_event,_hasHookEvent，如果此时是子组件，且父组件上传递了事件（vm._parentListeners），则会更新子组件的绑定事件列表，对`vm._parentListeners进行包装
