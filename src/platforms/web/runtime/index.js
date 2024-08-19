@@ -20,7 +20,7 @@ import platformDirectives from './directives/index'
 import platformComponents from './components/index'
 
 // install platform specific utils
-Vue.config.mustUseProp = mustUseProp // 检测原生dom属性的方法，如selected等
+Vue.config.mustUseProp = mustUseProp // 检测原生dom属性的方法，如option标签的selected属性、input等标签的value属性
 Vue.config.isReservedTag = isReservedTag // 判断是否为保留标签的方法（原生的html和svg相关的标签）
 Vue.config.isReservedAttr = isReservedAttr // 判断是否为保留属性的方法（style，class）
 Vue.config.getTagNamespace = getTagNamespace // 获取命名空间的方法（svg和mathML相关标签，分别返回svg和math)
@@ -34,36 +34,37 @@ extend(Vue.options.components, platformComponents) // 添加transition、transit
 Vue.prototype.__patch__ = inBrowser ? patch : noop
 
 // 与端（客户端、服务端）无关的$mount方法
-// 该方法无compiler
+// 该方法无compiler，在有compiler的环境下，会被重写
 Vue.prototype.$mount = function (
-  el?: string | Element,
-  hydrating?: boolean
+  el?: string | Element, // 挂载元素
+  hydrating?: boolean // 是否为服务端渲染
 ): Component {
-  el = el && inBrowser ? query(el) : undefined
-  return mountComponent(this, el, hydrating)
+  el = el && inBrowser ? query(el) : undefined // 在浏览器环境下获取元素
+  return mountComponent(this, el, hydrating) // 执行挂载
 }
 
+// devtools以及生产环境部署相关的提示
 // devtools global hook
 /* istanbul ignore next */
 if (inBrowser) {
   setTimeout(() => {
     if (config.devtools) {
-      if (devtools) {
+      if (devtools) { // 安装了devtools，则触发devtools的init事件
         devtools.emit('init', Vue)
-      } else if (
+      } else if ( 
         process.env.NODE_ENV !== 'production' &&
         process.env.NODE_ENV !== 'test'
-      ) {
+      ) { // 没有安装devtools，则在开发环境下给出安装devtool的提醒
         console[console.info ? 'info' : 'log'](
           'Download the Vue Devtools extension for a better development experience:\n' +
           'https://github.com/vuejs/vue-devtools'
         )
       }
     }
-    if (process.env.NODE_ENV !== 'production' &&
-      process.env.NODE_ENV !== 'test' &&
-      config.productionTip !== false &&
-      typeof console !== 'undefined'
+    if (process.env.NODE_ENV !== 'production' && // 不是生产环境
+      process.env.NODE_ENV !== 'test' && // 不是测试环境
+      config.productionTip !== false && // 没有关闭生产环境提示
+      typeof console !== 'undefined' // 存在console
     ) {
       console[console.info ? 'info' : 'log'](
         `You are running Vue in development mode.\n` +

@@ -19,10 +19,10 @@ const idToTemplate = cached(id => {
 // 挂载方法会优先使用render函数，其次是template，最后才是el
 // 如果没有render函数，则会将template转为render函数
 // 如果template也没有，则会通过el获取template再转为render函数
-// 当使用template时，如果template传入的是id选择器或者DOM节点，使用的该节点的innerHTML，
+// 当使用template时，如果template传入的是id选择器或者DOM节点，使用的是该节点的innerHTML作为template，
 // 因为此时节点被当作是存放模板的元素，可能是一个不可渲染的元素，如<script type="x-template" id="template"></script>
-// 另外使用template后应用需要手动挂在到指定的el上
-// 而当使用的是el，获取的是outerHTML，这是因为el本身在挂在时会被作为挂在点，在实例后也会进行自动执行挂载
+// 另外使用template后应用需要手动挂载到指定的el上
+// 而当使用的是el，获取的是outerHTML，这是因为el本身在挂在时会被作为挂在点，在实例化后也会进行自动执行挂载
 const mount = Vue.prototype.$mount
 Vue.prototype.$mount = function (
   el?: string | Element, // 挂载元素
@@ -105,6 +105,9 @@ Vue.prototype.$mount = function (
 }
 
 /**
+ * 获取元素的outerHTML
+ * 如果元素没有outerHTML方法，则创建一个div元素将元素作为其子元素
+ * 并返回div的innerHTML
  * Get outerHTML of elements, taking care
  * of SVG elements in IE as well.
  */
