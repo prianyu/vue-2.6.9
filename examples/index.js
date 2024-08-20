@@ -16,7 +16,7 @@ const Child = {
         console.log("$foo" in this) // 只能使用this.$data.$foo访问
         console.log("_foo" in this) // 只能使用this._data._foo访问
         // 访问this.test不会触发属性未定义的警告
-       return h('div', {},  this.msg + this.test + this.$foo + this._foo)  // child undefined undefined undefined
+       return h('div', {class: "aa"},  this.msg + this.test + this.$foo + this._foo)  // child undefined undefined undefined
     } 
 }
 
@@ -24,3 +24,5 @@ const vm = new Vue({
     // render: h => h(App) // options.render._withStripped为true，走get拦截器
     render: h => h(Child) // options.render._withStripped不为true走has拦截器警告
 }).$mount('#app')
+
+console.log(vm)

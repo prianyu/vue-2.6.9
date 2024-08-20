@@ -39,7 +39,7 @@ export function initMixin (Vue: Class<Component>) {
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
       // _isComponent是在渲染阶段解析到子组件时内部实例化组件时添加的一个属性
-      // 选项合并是比较耗时的，所以对于内部创建的组件，做了特别的合并处理
+      // 动态合并选项是比较耗时的，所以对于内部创建的组件，做了特别的合并处理
       // 这样可以提高选项合并的性能
       initInternalComponent(vm, options)
     } else { // 非子组件选项合并
@@ -81,7 +81,6 @@ export function initMixin (Vue: Class<Component>) {
     initEvents(vm)
     // 初始化_vnode,$vnode,$slots,$scopeSlots,$createElement,_c以及响应式的$listeners,$attrs等属性
     initRender(vm)
-    // debugger
     // 执行beforeCreate钩子
     callHook(vm, 'beforeCreate') 
     // 在data和props前处理inject，会逐级遍历父元素获取对应inject并注入，inject是响应式的，但是不可被修改
@@ -113,14 +112,14 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   // doing this because it's faster than dynamic enumeration.
   // 同步原型的属性，提高查找速度
   const parentVnode = options._parentVnode // 与vm.$vnode是同一个引用，是子组件的占位vnode
-  opts.parent = options.parent // 父元素引用
-  opts._parentVnode = parentVnode // 占位节点的引用
+  opts.parent = options.parent // 父组件实例引用
+  opts._parentVnode = parentVnode // 占位节点的引用，当前组件实例在父组件中的VNode表示
 
   const vnodeComponentOptions = parentVnode.componentOptions // 创建占位vnode时保存的选项信息，如propsData,children等
   opts.propsData = vnodeComponentOptions.propsData //提取propsData，即父组件传递给子组件的props
   opts._parentListeners = vnodeComponentOptions.listeners //提取父组件传递给子组件的事件，是data.on的别名
   opts._renderChildren = vnodeComponentOptions.children // 实际要渲染的内容，是一个vnode数组，在render时由createElement创建而来
-  opts._componentTag = vnodeComponentOptions.tag // 渲染的标签
+  opts._componentTag = vnodeComponentOptions.tag // 当前组件实例的标签名
 
   // 保存渲染函数
   if (options.render) {
