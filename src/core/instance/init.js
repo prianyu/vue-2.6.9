@@ -45,10 +45,12 @@ export function initMixin (Vue: Class<Component>) {
     } else { // 非子组件选项合并
       // 将构造函数上的选项、传入的选项进行合并
       // 构造函数可以是Vue，也可以是使用Vue.extend继承生成的构造函数
-      // 选项合并后会对props，inject，direvtives做选项的规范化，以及对mixins，extends，components等都做了合并
+      // 选项合并后会对props，inject，directives做选项的规范化，
+      // 以及对mixins，extends，components、data、methods等都做了合并
       vm.$options = mergeOptions(
-         // 处理构造器选项，只有是子类构造器，且子类或者基类构造器选项改变了才会重新计算
-         // 构造函数上的options会有内置组件（keepAlive，transtion等）、指令（v-model、v-show）等
+         // 处理构造器选项，只有是子类构造函数，且子类或者基类构造函数选项改变了才会重新计算
+         // 构造函数上的options会有内置组件（keepAlive，transition等）、指令（v-model、v-show）等
+         // 不是子类则直接返回的构造函数的选项
         resolveConstructorOptions(vm.constructor),
         options || {}, // 实例化时的选项
         vm // 组件实例
@@ -57,9 +59,10 @@ export function initMixin (Vue: Class<Component>) {
 
 
     /* istanbul ignore else */
-    // vm._renderProxy 用于后续执行_render方法
+    // 添加render函数的作用域代理_renderProxy
+    // vm._renderProxy 用于render方法的执行上下文
     // 开发环境下增强vm实例，在支持Proxy环境下，返回一个vm的代理对象
-    // 使其支持属性定义的合法性($、_开头)以及未定义变量访问时的错误提醒
+    // 使其支持属性定义的合法性($、_开头)以及未定义变量访问时的检测并给出错误提醒
     if (process.env.NODE_ENV !== 'production') {
       initProxy(vm)// initProxy最终也会在vm上增加一个_renderProxy属性
     } else {
@@ -68,13 +71,17 @@ export function initMixin (Vue: Class<Component>) {
 
 
     // expose real self
+    // 暴露实例自身
     vm._self = vm
-    //初始化$parent和$children并绑定父子关系，初始化$refs,$root,_watcher,_inactive,_isMounted,_isDestroyed,_isBeingDestroyed,_directInactive等属性
+    // 初始化与声明周期相关的属性和方法
+    // 绑定$parent和$children父子关系
+    // 初始化$refs,$root,_watcher,_inactive,_isMounted,_isDestroyed,_isBeingDestroyed,_directInactive等属性
     initLifecycle(vm)
     //初始化_events,_hasHookEvent等属性，根据$options._parentListeners更新子组件的事件监听
     initEvents(vm)
     // 初始化_vnode,$vnode,$slots,$scopeSlots,$createElement,_c以及响应式的$listeners,$attrs等属性
     initRender(vm)
+    // debugger
     // 执行beforeCreate钩子
     callHook(vm, 'beforeCreate') 
     // 在data和props前处理inject，会逐级遍历父元素获取对应inject并注入，inject是响应式的，但是不可被修改
@@ -123,16 +130,20 @@ export function initInternalComponent (vm: Component, options: InternalComponent
 }
 
 
-// 处理构造函数的选项
-// 构造函数在使用Vue.extend继承的时候就将基类的选项合并到子类，缓存在Ctor.superOptions中
-// 而子类构造器自身的选项也会在创建构造器那一刻初始化了，存在Ctor.extendOptions
-// 实例化的时候，可能基类的options已经改变了，这个时候需要更新supoerOptions
-// 子类构造器本身的options可能也发生了改变，需要重新更新extendOptions
+// 解析处理构造函数的选项
+// const Sub = Vue.extend(extendOptions)
+// const Sub2 = Sub.extend(extendOptions2)
+// 1. 获取构造函数的options
+// 2. 如果构造函数是个子类，则递归获取基类的options
+// 3. 如果基类的options改变了，则需要更新superOptions(实例化时可能已改变)
+// 4. 如果创建子类构造函数的options改变了，则更新extendOptions
+// 5. 合并superOptions和extendOptions，作为构造函数的最终选项
+// 6. 增加组件的自查找属性，可以通过类的名称获取到组件的构造函数
+
 export function resolveConstructorOptions (Ctor: Class<Component>) {
   let options = Ctor.options // 选项引用
   if (Ctor.super) { // 有super说明是个子类构造器
-    // 递归合并
-    const superOptions = resolveConstructorOptions(Ctor.super)
+    const superOptions = resolveConstructorOptions(Ctor.super) // 递归合并
     const cachedSuperOptions = Ctor.superOptions // 获取之前缓存起来的基类的构造器选项
     if (superOptions !== cachedSuperOptions) {
       // super option changed,
@@ -157,13 +168,13 @@ export function resolveConstructorOptions (Ctor: Class<Component>) {
   return options
 }
 
-// 用于获取子类构造器被修改或者新增的选项集合
+// 用于获取子类构造函数被修改或者新增的选项集合
 function resolveModifiedOptions (Ctor: Class<Component>): ?Object {
   let modified
   const latest = Ctor.options // 获取现在的构造器选项
-  const sealed = Ctor.sealedOptions // 获取创建子类构造器那一刻的构造器选项
+  const sealed = Ctor.sealedOptions // 获取创建子类构造函数冻结的选项（创建子类那一刻的构造器选项）
   // 遍历新的现在的构造器选项
-  // 如果在定义时的封装选项里找不到，则说明是新增或者改变过的属性，将其压入modified
+  // 如果在定义时的冻结选项里找不到，则说明是新增或者改变过的属性，将其压入modified
   for (const key in latest) {
     if (latest[key] !== sealed[key]) {
       if (!modified) modified = {}

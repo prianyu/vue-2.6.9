@@ -42,24 +42,30 @@ export function initLifecycle (vm: Component) {
   const options = vm.$options
 
   // locate first non-abstract parent
-  // 绑定父子关系，只有非抽象的组件才会被作为父级组件
+  // 绑定父子关系
+  // 如果当前实例不是抽象的则将当前实例添加到第一个非抽象父实例的$children属性里
+  // 并将当前实例的$parent指向父实例
+  // options.parent可以是组件定义时显示声明的父实例
+  // 也可以是父组件patch时，实例化子组件的时候自动绑定的父实例
   let parent = options.parent
   if (parent && !options.abstract) { // 组件自身也不是抽象的
+    // 循环找到第一个非抽象的祖先实例
     while (parent.$options.abstract && parent.$parent) {
       parent = parent.$parent
     }
-    parent.$children.push(vm)
+    parent.$children.push(vm) // 将当前实例添加到找到的父实例中
   }
 
-  vm.$parent = parent
+  vm.$parent = parent // 记录父实例
   vm.$root = parent ? parent.$root : vm // 记录根实例
 
   vm.$children = [] // 用于存放子组件
   vm.$refs = {} // $refs
 
+  // 其它与声明周期相关的属性初始化
   vm._watcher = null // 渲染watcher
   vm._inactive = null // 组件是否已失活
-  vm._directInactive = false
+  vm._directInactive = false // 是否直接被设置为失活
   vm._isMounted = false // 是否已挂载
   vm._isDestroyed = false // 是否已销毁
   vm._isBeingDestroyed = false // 标记组件是否出于正在销毁的阶段

@@ -25,6 +25,7 @@ import {
  * Option overwriting strategies are functions that handle
  * how to merge a parent option value and a child option
  * value into the final value.
+ * 选项合并策略
  */
 const strats = config.optionMergeStrategies // 获取自定义的选项合并策略
 
@@ -35,8 +36,14 @@ const strats = config.optionMergeStrategies // 获取自定义的选项合并策
  * 且el和propData只能在在new Vue的方式下传入，
  * 如果是在export default{}单文件组件中是不能传入这两个参数的
  */
+// ---------------------------el和propsData合并策略---------------
 if (process.env.NODE_ENV !== 'production') {
   strats.el = strats.propsData = function (parent, child, vm, key) {
+    // 子组件是不允许在选线各种传入el和propsData的
+    // vm来自于mergeField函数，间接来自于mergeOptions函数
+    // mergeOptions函数在组件实例化时被调用（vm._init），也可以在Vue.extend中被调用
+    // 当使用Vue.extend调用时，vm为undefined，而子组件的实现时通过实例化子类类完成的
+    // 子类又是由Vue.extend创建的，所以可以通过vm来判断当前调用是_init调用还是Vue.extend调用
     if (!vm) {
       warn(
         `option "${key}" can only be used during instance ` +
@@ -47,9 +54,12 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
+// ---------------data的选项合并策略
+
 /**
  * Helper that recursively merges two data objects together.
- * 递归合并data选项，会采用set来设置值
+ * 递归合并data选项，将from对象中的属性合并到to中
+ * 会采用set来设置值
  */
 function mergeData (to: Object, from: ?Object): Object {
   if (!from) return to
@@ -80,19 +90,22 @@ function mergeData (to: Object, from: ?Object): Object {
 }
 
 /**
- * Data 的选项合并策略
+ * Data 的选项合并策略，返回一个合并函数
  */
 export function mergeDataOrFn (
   parentVal: any,
   childVal: any,
   vm?: Component
 ): ?Function {
-  if (!vm) {
+  if (!vm) { // 自组加的data合并
     // in a Vue.extend merge, both should be functions
-    if (!childVal) {
+    // 在Vue.extend中合并选项时，parentVal和childVal都应该是函数
+    // const Parent = Vue.extend({})
+    // const Child = Parent.extend({})
+    if (!childVal) { // 子类没有data选项
       return parentVal
     }
-    if (!parentVal) {
+    if (!parentVal) { // 父类没有data选项
       return childVal
     }
     // 走到这里，说明parentVal和childVal都不为空，则需要合并
@@ -101,7 +114,7 @@ export function mergeDataOrFn (
     // merged result of both functions... no need to
     // check if parentVal is a function here because
     // it has to be a function to pass previous merges.
-    // 返回一个合并函数
+    // 返回一个合并函数，接收当前实例为执行上下文和参数
     return function mergedDataFn () {
       return mergeData(
         typeof childVal === 'function' ? childVal.call(this, this) : childVal,
@@ -127,14 +140,15 @@ export function mergeDataOrFn (
   }
 }
 
-// data的选项合并策略
+// data合并最终会被处理成一个函数
+// 之所以处理成一个函数，是因为props和inject在实例初始化的时候是先于data的
+// 这样就可以在data中获取到props和inject
 strats.data = function (
   parentVal: any,
   childVal: any,
   vm?: Component
 ): ?Function {
-  if (!vm) {
-    // 没有传递实例时，data必须要为一个函数
+  if (!vm) { // 没有传入vm则为子组件，data必须要为一个函数
     if (childVal && typeof childVal !== 'function') {
       process.env.NODE_ENV !== 'production' && warn(
         'The "data" option should be a function ' +
@@ -151,6 +165,7 @@ strats.data = function (
   return mergeDataOrFn(parentVal, childVal, vm)
 }
 
+// -------------生命周期钩子选项合并策略--------------------
 /**
  * Hooks and props are merged as arrays.
  * 生命周期钩子：合并成数组并去重
@@ -182,10 +197,12 @@ function dedupeHooks (hooks) {
   return res
 }
 
+// 遍历所有的钩子，定义钩子的合并策略
 LIFECYCLE_HOOKS.forEach(hook => {
   strats[hook] = mergeHook
 })
 
+//--------------------资源（filters、directives、components）选项合并策略----------------------
 /**
  * Assets
  *
@@ -202,7 +219,7 @@ function mergeAssets (
 ): Object {
   // 以parentVal为原型创建对象
   // 也就是parentVal上的资源会以原型的形式存在于组件实例的$options中
-  // 比如vm.$options.components.__proto__ = {KeepAlive, Transtion, TranstionGroup}
+  // 比如vm.$options.components.__proto__ = {KeepAlive, Transition, TransitionGroup}
   const res = Object.create(parentVal || null)
   if (childVal) { // 将childVal扩展至res
     process.env.NODE_ENV !== 'production' && assertObjectType(key, childVal, vm)
@@ -215,6 +232,8 @@ function mergeAssets (
 ASSET_TYPES.forEach(function (type) {
   strats[type + 's'] = mergeAssets
 })
+
+//---------------watch选项合并---------------------
 
 /**
  * Watchers.
@@ -230,6 +249,8 @@ strats.watch = function (
   key: string
 ): ?Object {
   // work around Firefox's Object.prototype.watch...
+  // 火狐浏览器中Object.prototype拥有原生的watch方法，因此普通的对象也拥有watch属性
+  // 当判断是原生的watch方法时将其重置为undefined
   if (parentVal === nativeWatch) parentVal = undefined
   if (childVal === nativeWatch) childVal = undefined
   /* istanbul ignore if */
@@ -239,23 +260,25 @@ strats.watch = function (
   }
   if (!parentVal) return childVal
   const ret = {}
-  extend(ret, parentVal)
+  extend(ret, parentVal) // 将parentVal混合到ret中
   for (const key in childVal) {
     let parent = ret[key]
     const child = childVal[key]
+    // 有同名的watch则转为数组
     if (parent && !Array.isArray(parent)) {
       parent = [parent]
     }
     ret[key] = parent
-      ? parent.concat(child)
-      : Array.isArray(child) ? child : [child]
+      ? parent.concat(child) // 合并
+      : Array.isArray(child) ? child : [child] // 转数组
   }
   return ret
 }
 
+//--------------props、methods、inject、computed、provide选项合并策略-----------------
 /**
  * Other object hashes.
- * props、methods、inject采用覆盖的方式合并
+ * props、methods、inject、computed采用覆盖的方式合并
  */
 strats.props =
 strats.methods =
@@ -289,7 +312,9 @@ const defaultStrat = function (parentVal: any, childVal: any): any {
 }
 
 /**
- * 检测component name的有效性
+ * 检测组件名称的有效性
+ * 1. 符合html5自定义标签名规范
+ * 2. 不能是内置html标签和保留标签名称（如transition、component）
  */
 function checkComponents (options: Object) {
   for (const key in options.components) {
@@ -361,6 +386,8 @@ function normalizeProps (options: Object, vm: ?Component) {
  */
 // inject规范化
 // 将所有的项转为{from, default}的格式
+// ['age', 'name'] => {age: {from: 'age'}, name: {from: 'name'}}
+// {age: 'age', name: {from: 'key', default: 'test'}} => { age: { from: 'age'}, name: { from: 'key', default: 'test'}
 function normalizeInject (options: Object, vm: ?Component) {
   const inject = options.inject
   if (!inject) return
@@ -392,7 +419,7 @@ function normalizeInject (options: Object, vm: ?Component) {
  * Normalize raw function directives into object format.
  */
 // directive规范化
-//对于函数形式（标记为def）的directive转为{bind: def, update: def}的格式
+//对于函数形式的directive转为{bind: fn, update: fn}的格式
 function normalizeDirectives (options: Object) {
   const dirs = options.directives
   if (dirs) {
@@ -405,6 +432,7 @@ function normalizeDirectives (options: Object) {
   }
 }
 
+// 判断给定的值是否为纯对象
 function assertObjectType (name: string, value: any, vm: ?Component) {
   if (!isPlainObject(value)) {
     warn(
@@ -419,13 +447,18 @@ function assertObjectType (name: string, value: any, vm: ?Component) {
  * Merge two option objects into a new one.
  * Core utility used in both instantiation and inheritance.
  */
-// 选项合并函数
+// 选项合并函数，该函数在组件实例化以及Vue.extend函数中被调用
+// 当在Vue.extend中调用时，vm为undefined
+// 1. 规范化props、inject、directives
+// 2. 合并extends、mixins
+// 3. 返回合并后的选项
 // 在使用Vue.mixin时，vm是为undefined的
 export function mergeOptions (
   parent: Object,
   child: Object,
   vm?: Component
 ): Object {
+  // 组件名合法性检测
   if (process.env.NODE_ENV !== 'production') {
     checkComponents(child)
   }
@@ -435,9 +468,9 @@ export function mergeOptions (
     child = child.options
   }
 
-  normalizeProps(child, vm) // props规范化
-  normalizeInject(child, vm) // inject规范化
-  normalizeDirectives(child) // directives规范化
+  normalizeProps(child, vm) // props规范化，统一转为{key: { type: String, default?: 'defaultValue'}}的格式
+  normalizeInject(child, vm) // inject规范化，统一转为{ key: { from: 'keyName', default?: 'defaultValue'}}
+  normalizeDirectives(child) // directives规范化，函数类型的统一转为{ update: fn, bind: fn }
 
   // Apply extends and mixins on the child options,
   // but only if it is a raw options object that isn't
@@ -461,8 +494,8 @@ export function mergeOptions (
       parent = mergeOptions(parent, child.extends, vm)
     }
      // 合并mixins
-     // mixins里每一项的格式都是options一致，按照声明的顺序合并至parent
-     // 相同的options选项会合并，最终parant会变成一个合并后的新的options，
+     // mixins里每一项的格式都是跟options一致的，按照声明的顺序合并至parent
+     // 相同的options选项会合并，最终parent会变成一个合并后的新的options，
      // 后续child也有对应的options选项时，则也可以覆盖掉parent对应的options选项
     if (child.mixins) {
       for (let i = 0, l = child.mixins.length; i < l; i++) {

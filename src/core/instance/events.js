@@ -11,22 +11,19 @@ import { updateListeners } from '../vdom/helpers/index'
 
 // 事件初始化
 export function initEvents (vm: Component) {
-  vm._events = Object.create(null)
-  vm._hasHookEvent = false
-  /**
-  init parent attached events
-  父组件绑定的传递给子组件的事件列表
-  updateComponentListeners会对所有的事件创建一个函数调用者(invoker)，用于捕获错误
-  其真实的事件回调会存储在调用者的fns属性上，
-  invoker = function() {}
-  invoker.fns = vm.$options._parentListeners[name]
-  最终vm.$options._parentListeners的结果为类似以下的格式
-  {
-    click: invoker(){}
-    custom: invoker() {}
-  }
-  
-*/
+  vm._events = Object.create(null) // 用于存储事件的对象
+  vm._hasHookEvent = false // 是否有hook:event钩子组件的标记
+  // init parent attached events
+  // 父组件绑定的传递给子组件的事件列表
+  // updateComponentListeners会对所有的事件创建一个函数调用者(invoker)，用于捕获错误
+  // 其真实的事件回调会存储在调用者的fns属性上，
+  // invoker = function() {}
+  // invoker.fns = vm.$options._parentListeners[name]
+  // 最终vm.$options._parentListeners的结果为类似以下的格式
+  // {
+  //   click: invoker(){}
+  //   custom: invoker() {}
+  // }
   const listeners = vm.$options._parentListeners
   if (listeners) {
     // 更新子组件的事件
@@ -48,7 +45,7 @@ function remove (event, fn) {
 
 //创建一个执行一次的函数
 function createOnceHandler (event, fn) {
-  const _target = target
+  const _target = target // 当前的实例
   return function onceHandler () {
     const res = fn.apply(null, arguments)
     if (res !== null) {

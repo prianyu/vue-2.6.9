@@ -70,7 +70,7 @@ if (process.env.NODE_ENV !== 'production') {
   }
 
   // in操作符拦截器
-  // 拦截in检查、with检查、Reflect.has等
+  // 拦截in检查、with检查、Reflect.has、继承属性查询等
   const hasHandler = {
     has (target, key) {
       const has = key in target // 属性是否在target中
@@ -102,14 +102,19 @@ if (process.env.NODE_ENV !== 'production') {
     }
   }
 
-  // 定义
-  // vm._renderProxy代理
+  // 定义渲染函数的作用域代理vm._renderProxy
   initProxy = function initProxy (vm) {
     if (hasProxy) { // 支持Proxy
       // 根据_withStripped属性来决定使用哪一个代理处理程序
+      // _withStripped属性是vue-loader将vue单文件组件模板转为render函数后默认添加的一个属性
+      // 此时template被编译成了不使用with语句包裹的遵循严格模式的Javascript代码
+      // 在不使用with语句包裹时，访问变量都是通过属性访问的的(this.name，this['name'])，因此不会触发has拦截
+      // 而如果不是经过vue-loader编译的模板，会被转为使用with语句包裹的代码（/src/compiler/codegen/index.js），
+      // 因此会触发has拦截
+      // 对于手写的render函数，没有经过compiler转换也没有_withStripped，所以其会使用has拦截器，
+      // 因此单纯的访问不合法的属性不会触发警告，如果要触发警告需要手动将_withStripped设置为true
       // determine which proxy handler to use
       const options = vm.$options
-      // _withStripped属性是vue-loader将vue文件转为render函数后添加的一个属性
       const handlers = options.render && options.render._withStripped
         ? getHandler
         : hasHandler
@@ -121,3 +126,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export { initProxy }
+
