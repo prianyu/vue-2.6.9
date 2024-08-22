@@ -24,6 +24,10 @@ export function initInjections (vm: Component) {
   // 根据inejct获取provide数据
   const result = resolveInject(vm.$options.inject, vm)
   if (result) {
+    // 临时关闭数据观测，减少不必要的开销
+    // 1. 很多情况下，依赖注入是配置性的，在整个应用周期中可能不会变化
+    // 2. 依赖注入实际是一种“逃生舱”机制，用于解决部分数据流的问题
+    // 3. Vue父子组件的数据流是单向的
     toggleObserving(false)
     // 根据得到的provide数据往vm实例上添加响应式的数据
     // inject从provide获取到的数据虽然是响应式的，但是不应该在子组件上被直接修改
@@ -47,7 +51,9 @@ export function initInjections (vm: Component) {
   }
 }
 
-// 根据inject获取provide
+// 根据inject解析并注入provide
+// 会不断从祖先元素中获取
+// 如果获取不到会从default中获取
 export function resolveInject (inject: any, vm: Component): ?Object {
   if (inject) {
     // inject is :any because flow is not smart enough to figure out cached

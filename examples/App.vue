@@ -1,17 +1,20 @@
 <template>
     <div id="container">
-        <!-- options.render._withStripped 为true -->
-        {{ msg }} {{ test }} {{ $foo }} {{ _foo }}
+        <!---------- 非法data属性名测试---- -->
+        <!-- <TemplateRender />
+        <CustomRender /> -->
+        <!-- Vue.extends静态的props被代理到原型 -->
+        <StaticProps message="hello" />
     </div>
 </template>
 <script>
+
+import TemplateRender, { CustomRender } from './components/InvalidKey.vue'
+import StaticProps from './components/StaticProps.vue';
 export default {
-    data() {
-        return {
-            msg: 'child',
-            $foo: "foo",
-            _foo: "_foo",
-        }
-    }
+    components: {
+        TemplateRender, CustomRender,
+        StaticProps
+    },
 }
 </script>

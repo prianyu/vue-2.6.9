@@ -49,7 +49,7 @@ export function proxy (target: Object, sourceKey: string, key: string) {
 
 // 响应式数据实例化
 export function initState (vm: Component) {
-  vm._watchers = [] 
+  vm._watchers = [] // 存放观察者
   const opts = vm.$options
   // props初始化
   if (opts.props) initProps(vm, opts.props)
@@ -70,6 +70,7 @@ export function initState (vm: Component) {
 }
 
 // 初始化props
+// 在示例上增加_props属性，并将props数据的访问代理到vm._props上
 function initProps (vm: Component, propsOptions: Object) {
   const propsData = vm.$options.propsData || {} // 从父组件接收到的props数据
   const props = vm._props = {} // 添加_props属性用于存储
@@ -80,18 +81,19 @@ function initProps (vm: Component, propsOptions: Object) {
   // 根实例标记
   const isRoot = !vm.$parent
   // root instance props should be converted
+  // 非根组件下关闭数据观察
   if (!isRoot) {
     toggleObserving(false)
   } 
   for (const key in propsOptions) {
     keys.push(key) // 缓存key
     // 值的合法性检测并获取值
-    // 这里会对prop的默认值做计算，也会对prop值的合法性做校验
-    // 还会对prop值做数据监听
+    // 这里会对prop的默认值做计算，也会对prop值的合法性做校验，还会对prop值做数据监听
     const value = validateProp(key, propsOptions, propsData, vm)
     /* istanbul ignore else */
     // 定义响应式的props
     if (process.env.NODE_ENV !== 'production') {
+      // 保留属性（key,ref,slot,slot-scope,is及其它自定义的保留属性）检测
       const hyphenatedKey = hyphenate(key)
       if (isReservedAttribute(hyphenatedKey) ||
           config.isReservedAttr(hyphenatedKey)) {
@@ -100,6 +102,7 @@ function initProps (vm: Component, propsOptions: Object) {
           vm
         )
       }
+      // 子组件不能修改props
       defineReactive(props, key, value, () => {
         if (!isRoot && !isUpdatingChildComponent) {
           warn(
@@ -116,10 +119,12 @@ function initProps (vm: Component, propsOptions: Object) {
     }
     // static props are already proxied on the component's prototype
     // during Vue.extend(). We only need to proxy props defined at
-    // instantiation here.
+    // instantiation here.yjt136202
+    
     // 将vm上对应的属性值代理至vm._props上
-    // 由于使用Vue.extend()创建的静态的props属性已经在创建阶段代理至原型
-    // 所以这里只需要代理实例上的props属性就可以了
+    // 由于使用Vue.extend()创建的静态的props属性已经在创建阶段代理至组件的原型
+    // 所以这里只需要代理实例化时的props属性就可以了
+    // @suspense
     if (!(key in vm)) {
       proxy(vm, `_props`, key)
     }

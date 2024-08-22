@@ -83,12 +83,13 @@ export function initMixin (Vue: Class<Component>) {
     initRender(vm)
     // 执行beforeCreate钩子
     callHook(vm, 'beforeCreate') 
-    // 在data和props前处理inject，会逐级遍历父元素获取对应inject并注入，inject是响应式的，但是不可被修改
+    // 在data和props前处理inject，会逐级遍历祖先元素的provide获取对应inject并注入，inject不是响应式的且不可被修改
     initInjections(vm) // resolve injections before data/props
-    // 依次处理props、methods、data、computed、watch
+    // 响应式数据初始化，依次处理props、methods、data、computed、watch
     initState(vm)
-    // 处理provide，可以为函数，可以为对象
+    // 处理provide，可以为函数，可以为对象,将结果添加到vm._provided属性上
     initProvide(vm) // resolve provide after data/props
+    // 组件数据初始化完毕，调用created钩子
     callHook(vm, 'created')
 
     /* istanbul ignore if */
