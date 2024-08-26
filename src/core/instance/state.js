@@ -53,17 +53,17 @@ export function initState (vm: Component) {
   const opts = vm.$options
   // props初始化
   if (opts.props) initProps(vm, opts.props)
-  // methods初始化，methods比data先初始化，是因为data可以为函数，也可以调用methods中的函数
+  // methods初始化，methods比data先初始化，data可以为函数，也可以调用methods中的函数初始化data
   if (opts.methods) initMethods(vm, opts.methods)
   // data初始化
   if (opts.data) {
     initData(vm)
-  } else { // 没有传data直接观察空对象
+  } else { // 没有传data直接观察空对象，可以后续动态添加数据
     observe(vm._data = {}, true /* asRootData */)
   }
-  // computed初始化
+  // computed初始化，将computed转为setter/getter，并增加计算属性的观察者vm.computedWatchers
   if (opts.computed) initComputed(vm, opts.computed)
-  // watch初始化
+  // watch初始化，参数归一化后，转为调用vm.$watch
   if (opts.watch && opts.watch !== nativeWatch) {
     initWatch(vm, opts.watch)
   }
@@ -73,7 +73,7 @@ export function initState (vm: Component) {
 // 在示例上增加_props属性，并将props数据的访问代理到vm._props上
 function initProps (vm: Component, propsOptions: Object) {
   const propsData = vm.$options.propsData || {} // 从父组件接收到的props数据
-  const props = vm._props = {} // 添加_props属性用于存储
+  const props = vm._props = {} // 添加_props属性用于存储props
   // cache prop keys so that future props updates can iterate using Array
   // instead of dynamic object key enumeration.
   // 缓存属性的键，以便将来属性更新时可以使用Array而不是对对象的键进行动态的枚举
@@ -82,6 +82,7 @@ function initProps (vm: Component, propsOptions: Object) {
   const isRoot = !vm.$parent
   // root instance props should be converted
   // 非根组件下关闭数据观察
+  // 子组件的props通常来自父组件的data，data会被转为响应式对象，无需重复观察
   if (!isRoot) {
     toggleObserving(false)
   } 
@@ -120,11 +121,12 @@ function initProps (vm: Component, propsOptions: Object) {
     // static props are already proxied on the component's prototype
     // during Vue.extend(). We only need to proxy props defined at
     // instantiation here.yjt136202
-    
+
     // 将vm上对应的属性值代理至vm._props上
+    // 使用Vue.extend()创建的子类，其传入的props选项在创建子类时已经被代理到构造函数的原型的_props上
+    // 这样可以避免每次实例化子类时都要创建代理，所以这里只需要代理实例化时的props属性就可以了
+    // 当实例访问对应的props时，会自动从_props上获取，找不到则从原型链上的_props上获取
     // 由于使用Vue.extend()创建的静态的props属性已经在创建阶段代理至组件的原型
-    // 所以这里只需要代理实例化时的props属性就可以了
-    // @suspense
     if (!(key in vm)) {
       proxy(vm, `_props`, key)
     }
@@ -134,6 +136,10 @@ function initProps (vm: Component, propsOptions: Object) {
 
 
 // data初始化
+// 1. 获取data并存储在vm._data上
+// 2. 方法名、属性名冲突检测
+// 3. 在实例上的data属性的访问代理到vm._data上
+// 4. 观察data，将data转换为响应式对象
 function initData (vm: Component) {
   let data = vm.$options.data
   // data可以为对象也可以为返回对象的函数
@@ -151,6 +157,7 @@ function initData (vm: Component) {
     )
   }
   // proxy data on instance
+  // 代理属性及属性名冲突检测
   const keys = Object.keys(data) // 获取所有的key
   const props = vm.$options.props 
   const methods = vm.$options.methods
@@ -177,12 +184,15 @@ function initData (vm: Component) {
     }
   }
   // observe data
-  // 对data进行观察
+  // 对data进行深度观察
+  // 观察后会添加data.__ob__属性
+  // 将所有属性转为setter/getter
   observe(data, true /* asRootData */)
 }
 
 
 // 获取data
+// data为函数时，传入当前实例执行data，返回值作为data
 export function getData (data: Function, vm: Component): any {
   // #7573 disable dep collection when invoking data getters
   /**
@@ -218,16 +228,16 @@ export function getData (data: Function, vm: Component): any {
 }
 
 
-// 计算属性的初始化
+// 计算属性的watcher配置，惰性求值的
 const computedWatcherOptions = { lazy: true }
 
+// 初始化computed，添加计算属性观察者并将计算属性转为getter/setter
 function initComputed (vm: Component, computed: Object) {
   // $flow-disable-line
-   // 创建计算属性wathers
-  const watchers = vm._computedWatchers = Object.create(null)
+  const watchers = vm._computedWatchers = Object.create(null) // 创建计算属性的watcher对象
   // computed properties are just getters during SSR
   const isSSR = isServerRendering()
-
+  debugger
   for (const key in computed) {
     // computed可以是函数，也可以是有getter和setter的对象
     const userDef = computed[key]
@@ -247,14 +257,14 @@ function initComputed (vm: Component, computed: Object) {
         vm,
         getter || noop,
         noop,
-        computedWatcherOptions // 计算属性的wather是懒加载的
+        computedWatcherOptions // 计算属性的watcher是惰性求值的
       )
     }
 
     // component-defined computed properties are already defined on the
     // component prototype. We only need to define computed properties defined
     // at instantiation here.
-    // 组件定义（子构造器）的计算属性已经在其原型上定义了，因此这里只定义实例上传进来的计算属性
+    // 使用Vue.extend创建的子类构造函数传入的computed选项已经定义在了原型上，无需重复定义
     if (!(key in vm)) { 
       // 遍历实例上的计算属性，computed名称不能与data、props、methods已经内置的一些属性同名
       defineComputed(vm, key, userDef)
@@ -270,22 +280,25 @@ function initComputed (vm: Component, computed: Object) {
 
 
 // 在实例上定义计算属性
+// 计算属性会被转为getter/setter
 export function defineComputed (
   target: any,
   key: string,
   userDef: Object | Function
 ) {
-  const shouldCache = !isServerRendering()
-  if (typeof userDef === 'function') {// 定义的属性为函数的话，则没有setter
+  const shouldCache = !isServerRendering() // 非服务端渲染时候才缓存
+  if (typeof userDef === 'function') {
+    // 定义的属性为函数的话，没有setter
     sharedPropertyDefinition.get = shouldCache
-      ? createComputedGetter(key) // 创建具有缓存的作用的计算属性触发器
-      : createGetterInvoker(userDef) // 创建计算属性的调用者
+      ? createComputedGetter(key) // 创建具有缓存的作用的计算属性getter方法
+      : createGetterInvoker(userDef) // 创建不具有缓存的计算属性getter方法
     sharedPropertyDefinition.set = noop
-  } else { // 定义的属性为对象，从中解析出setter和getter
+  } else { 
+    // 定义的属性为对象，从中解析出setter和getter
     sharedPropertyDefinition.get = userDef.get
       ? shouldCache && userDef.cache !== false
-        ? createComputedGetter(key)
-        : createGetterInvoker(userDef.get)
+        ? createComputedGetter(key) // 没有配置禁用缓存且不是服务端渲染则创建具有缓存的计算属性触发器
+        : createGetterInvoker(userDef.get) // 创建计算属性的调用者
       : noop
     sharedPropertyDefinition.set = userDef.set || noop
   }
@@ -300,13 +313,12 @@ export function defineComputed (
       )
     }
   }
-  // 在实例上定义计算属性，其结果为一个setter和getter的集合
-  console.log(key, sharedPropertyDefinition)
+  // 在实例上定义计算属性的setter和getter函数
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
 
-// 计算属性的getter调用者
+// 创建具有缓存作用的计算属性的getter函数
 function createComputedGetter (key) {
   return function computedGetter () {
     // 获取对应计算属性的watcher
@@ -338,11 +350,10 @@ function createComputedGetter (key) {
 }
 
 
-// 服务端渲染的计算属性getter调用者
+// 服务端渲染的计算属性getter方法
 function createGetterInvoker(fn) {
   return function computedGetter () {
-    // 假如这里依赖data或者prop，执行时候会触发其get方法
-    // 会进行依赖收集
+    // 假如这里依赖data或者prop，执行时候会触发其get方法，进行依赖收集
     // 这里与createComputedGetter不同，不需要再执行watcher.depend()
     // 因为每一次都会求值，执行属性依赖的getter时，会触发依赖收集，由于此时没有执行watcher.evaluate，
     // 那么Dep.target就不会被设置为计算属性的watcher，也就能够正常的完成渲染watcher的依赖收集
@@ -351,7 +362,7 @@ function createGetterInvoker(fn) {
 }
 
 
-// methods初始化
+// methods初始化，将method的上下文绑定为当前vue实例
 function initMethods (vm: Component, methods: Object) {
   const props = vm.$options.props
   for (const key in methods) {
@@ -371,7 +382,7 @@ function initMethods (vm: Component, methods: Object) {
           vm
         )
       }
-      if ((key in vm) && isReserved(key)) {
+      if ((key in vm) && isReserved(key)) { // 实例上存在以_开头或者$开头的同名属性
         warn(
           `Method "${key}" conflicts with an existing Vue instance method. ` +
           `Avoid defining component methods that start with _ or $.`

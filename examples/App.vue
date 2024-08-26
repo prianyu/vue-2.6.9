@@ -4,17 +4,21 @@
         <!-- <TemplateRender />
         <CustomRender /> -->
         <!-- Vue.extends静态的props被代理到原型 -->
-        <StaticProps message="hello" />
+        <StaticProps message="我是传入的值" />
+        <!-- 自定义setter和getter -->
+        <!-- <CustomSetterGetter /> -->
     </div>
 </template>
 <script>
 
 import TemplateRender, { CustomRender } from './components/InvalidKey.vue'
 import StaticProps from './components/StaticProps.vue';
+import CustomSetterGetter from './components/CustomSetterGetter.vue';
 export default {
     components: {
         TemplateRender, CustomRender,
-        StaticProps
+        StaticProps,
+        CustomSetterGetter
     },
 }
 </script>

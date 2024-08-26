@@ -86,6 +86,9 @@ export function initMixin (Vue: Class<Component>) {
     // 在data和props前处理inject，会逐级遍历祖先元素的provide获取对应inject并注入，inject不是响应式的且不可被修改
     initInjections(vm) // resolve injections before data/props
     // 响应式数据初始化，依次处理props、methods、data、computed、watch
+    // props代理至vm._props
+    // methods绑定上下文为当前vue实例
+    // 响应式数据处理，data转为setter/getter;computed转为setter/getter并添加计算属性观察者;watch做参数归一化后转为调用vm.$watch
     initState(vm)
     // 处理provide，可以为函数，可以为对象,将结果添加到vm._provided属性上
     initProvide(vm) // resolve provide after data/props
@@ -93,13 +96,15 @@ export function initMixin (Vue: Class<Component>) {
     callHook(vm, 'created')
 
     /* istanbul ignore if */
+    // 初始化性能指标
     if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
       vm._name = formatComponentName(vm, false)
       mark(endTag)
       measure(`vue ${vm._name} init`, startTag, endTag)
     }
-
-    if (vm.$options.el) { // 传入了el，自动挂载
+    
+    // 传入了el，自动挂载
+    if (vm.$options.el) {
       vm.$mount(vm.$options.el)
     }
   }

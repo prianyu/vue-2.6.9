@@ -63,7 +63,7 @@ export class Observer {
       // 对于数组，通过重写几个方法来实现监测（7个变异方法）
       // 实现的基本思路是通过方法拦截的方式，arrayMethods是重写的方法的集合
       // 将arrayMethods作为数组的原型，将数组原有的原型作为arrayMethods的原型
-      if (hasProto) { // 支持__proto__属性， 将arrayMethods作为__proto__的属性值
+      if (hasProto) { // 支持__proto__属性， 将arrayMethods作为__proto__的属性值，这样就不需要为每一个数组对象都增加属性
         protoAugment(value, arrayMethods)
       } else { 
         //对于不支持__proto__属性的，将重写的方法直接扩展至数组上面，这样就不会通过原型去查找方法了
@@ -140,12 +140,14 @@ function copyAugment (target: Object, src: Object, keys: Array<string>) {
  * __ob__里会有一个dep对象属性用于收集依赖
  */
 export function observe (value: any, asRootData: ?boolean): Observer | void {
-  // 基本类型和VNode是不创建的
+
+  // 只观察非VNode类型的对象
   if (!isObject(value) || value instanceof VNode) {
     return
   }
   let ob: Observer | void
-  if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) { // 已经观测
+  // 已经观测
+  if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) { 
     ob = value.__ob__
   } else if (
     shouldObserve && // 需要被观察
@@ -167,8 +169,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
 
 /**
  * Define a reactive property on an Object.
- * 将一个对象定义为响应式的getter/setter，
- * 并定义依赖收集器
+ * 将一个对象定义为响应式的getter/setter，并定义依赖收集器
  * 对于数组，不会执行Observer的walk方法，进而不会调用defineReactive函数，
  * 但是数组中的项如果是引用类型，会递归调用observe
  * 因此数组中的项如果是原始类型，则不会有getter和setter，也就不会有dep的引用；
@@ -184,7 +185,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
  *     b: 345 // 不是引用类型，所以只有闭包引用的dep,
  *     
  *     arr: [
- *        // arr会有一个闭包的dep，而arr又是对象，所以会有__ob__.dep
+ *        __ob__: Observer, // arr会有一个闭包的dep，而arr又是对象，所以会有__ob__.dep
  *        // 基本类型的数组成员是没有dep的，也没有闭包的dep，所以arr[1] = 2这里写法不能触发更新
  *        1,2,3,4,5
  *        // 引用类型的成员有__ob__.dep，但是没有闭包的dep引用
@@ -222,7 +223,7 @@ export function defineReactive (
    * 1. 最初的时候，Vue在Observer的walk方法（见上方#mark-0)是这样调用的：
    * defineReactive(obj, keys[i], obj[keys[i]])
    * 也就是传了第三个参数，即在进行观测之前获取了对象属性的值，这将导致一个bug，见（issues #7280）：
-   * 即当被obj[key]本身具有getter时，在获取值的时候就会触发getter函数，而getter函数本身是由用户定义的，
+   * 即当obj[key]本身具有getter时，在获取值的时候就会触发getter函数，而getter函数本身是由用户定义的，
    * 我们是无法预知用户是如何定义这个函数的，可能会导致一些意想不到的事情（比如搞了弹窗、其他副作用之类的事），
    * 出于避免这种不可预见的行为的考虑，在walk函数中调用改为了defineReactive(obj, keys[i])，即不先获取值
    * 然后在defineReactive函数中，添加if (!getter && arguments.length === 2) 这个条件，表示
@@ -247,19 +248,20 @@ export function defineReactive (
     val = obj[key]
   }
 
-  //对val进行深度观测，得到的值为childOb，即为val.__ob__, childOb会被闭包引用
+  // 递归观测val
+  // 对val进行深度观测，得到的值为childOb，即为val.__ob__, childOb会被闭包引用
   // 由于observe方法又会调用defineReactive,所以本质上这里是个递归
   // 最终子属性都会被转为getter/setter
   let childOb = !shallow && observe(val)
 
   Object.defineProperty(obj, key, {
-    enumerable: true, //可枚举
+    enumerable: true, // 可枚举
     configurable: true, // 可删除
     get: function reactiveGetter () {
       const value = getter ? getter.call(obj) : val // 优先从getter取值
       if (Dep.target) { // 收集当前watcher
-        //  dep.depend()会调用Dep.target.addDep(Dep.target)，将dep收集反向收集到watcher中
-       // Dep.target.addDep(Dep.target)又会调用dep的，会将Dep.target添加至dep.subs中，从而实现依赖的收集
+       // dep.depend()会调用Dep.target.addDep(Dep.target)，将dep反向收集到watcher中
+       // Dep.target.addDep(Dep.target)又会调用dep的addSub方法，会将Dep.target添加至dep.subs中，从而实现依赖的收集
        // 调用完毕后Dep.target的deps也存放着dep列表，这个反向收集的dep列表，在watcher被销毁时，可以清空dep
        // 闭包的dep收集一次依赖，这样当obj[key]直接变化时可以触发依赖的更新
         dep.depend() 
@@ -272,7 +274,7 @@ export function defineReactive (
           // 如 obj = {a: 1, b: 2} , <div>{{obj}}</div>
           // 在渲染时读取obj时会触发obj，obj.a,obj.b的getter，三者的闭包的dep都会收集当前的渲染watcher
           // 假如没有以下语句，则 vm.$set(obj, 'c', 3)无法触发渲染watcher更新
-          childOb.dep.depend() //收集子dep
+          childOb.dep.depend() // 收集子dep
           // 如果是数组，则通过数据项的__ob__.dep.depend收集依赖
           // 由于数据的项是没有闭包的dep的，对于项如果是引用类型的话，同理也是需要将watcher收集到每一项的__ob__.dep里面，
           // 用于后续动态新增属性
@@ -294,7 +296,7 @@ export function defineReactive (
       /* eslint-enable no-self-compare */
 
       // customSetter是自定义的setter，在$listens, $attrs,props,inject都传了这个参数
-      // 用于做一些操作的提醒
+      // 用于做一些操作的提醒，只在非生产环境下有效
       if (process.env.NODE_ENV !== 'production' && customSetter) {
         customSetter()
       }
@@ -305,10 +307,10 @@ export function defineReactive (
 
       if (setter) { // 本身具有setter则调用
         setter.call(obj, newVal)
-      } else { // 赋值
+      } else { // 修改val值为新的值
         val = newVal
       }
-      // 新设置的值能是一个object，需要重新观测
+      // 新设置的值是一个object，需要重新观测
       childOb = !shallow && observe(newVal)
       // 通知依赖更新
       dep.notify()
