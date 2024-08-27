@@ -7,9 +7,15 @@ import { isIE, isIOS, isNative } from './env'
 
 export let isUsingMicroTask = false // 用于标记是否使用了微任务
 
-const callbacks = []
+const callbacks = [] // 事件回调
 let pending = false // 等待状态
 
+// 刷新回调
+// 复制callbacks并清空可以保证下一个任务的创建正确
+// 如 
+//this.name="xxxx"
+// this.$nextTick(() => { this.name = "yyy"})
+// 第二次修改会创建一个新的任务
 function flushCallbacks () {
   pending = false // 标记为非等待解决状态
   const copies = callbacks.slice(0) // 拷贝回调函数
@@ -31,24 +37,22 @@ function flushCallbacks () {
 // sequential events (e.g. #4521, #6690, which have workarounds)
 // or even between bubbling of the same event (#6566).
 /**
- * 使用微任务实现的异步任务包装哈函数
+ * 异步任务执行函数
  * Vue在实现这个函数的时候经过了好多个迭代的版本，先后遇到了不少的问题
- * 1. 在2.4版本中，其背后实现的机制是microtask，优雅降级的方式是Promise > MutationObserver > setTimeout
- * 这种方案下，发现Microtask由于其优先级过高，会导致其触发会发生在顺序发生的事件、甚至同一事件源冒泡监听回调之间(e.g. #4521, #6690，#6566)
+ * 1. 在<=2.4版本中，其背后实现的机制是microtask，在队列的执行上，选择的方式是Promise > MutationObserver > setTimeout
+ * https://github.com/vuejs/vue/blob/v2.4.4/src/core/util/env.js
+ * 这种方案下，发现Microtask由于其优先级过高，会导致其在连续的事件以及同一事件源冒泡事件监听回调之间触发(e.g. #4521, #6690，#6566)
  * #4521：将一个input[checkbox]元素包裹在一个有v-on:click事件的div中，div会触发事件，但是input[checkbox]无法正常工作
- * 2. 在2.5.0~2.5.1版本中，Vue优先使用macrotask，优雅降级的方式为setImmediate>MessageChannel > Promise > setTimeout
- * 3. 在2.5.2~2.5.final版本中，Vue则结合使用microtask/macrotask，采用两种降级方案，分别为
- * setImmediate>MessageChannel>setTimeout;Promise > macroTimerFunc
- * 其内部体现为
- * （1）定义了两个函数microTimerFunc、macroTimerFunc ，默认使用microTimerFunc
- * （2）声明了一个useMacroTask，用于标记判断使用何种任务
- * （3）暴露withMacroTask API，用于在一些特别的场景下强制使用macroTask
- *  使用这种方案的主要原因是全部使用macrotask会导致一些比较微妙的、难以察觉的问题(e.g. #6813, out-in transitions)
- * 4. Vue在做了权衡之后，在Macrotask和Microtask做了取舍
- * （1）忍受microtask高优先级带来的有些场景下的优先执行
- * （2）这些场景可以在业务中用一些变通的方式来处理
- * （3）增加了一个只读变量：isUsingMicrotask
- * 最终优先级：Promise > MutationObserver > setImmediate > setTimeout
+ * #6566：详情见src/platforms/web/runtime/modules/events.js/add()
+ * 2. 于是在2.5.0~2.5.1版本中，Vue优先使用macrotask，降级的方式为setImmediate > MessageChannel > Promise > setTimeout
+ * https://github.com/vuejs/vue/blob/v2.5.1/src/core/util/env.js
+ * 3. 而到了2.5.2以后的2.5大版本中，Vue则结合使用microtask/macrotask，采用两种降级方案，分别为setImmediate>MessageChannel>setTimeout和Promise > macroTimerFunc
+ * https://github.com/vuejs/vue/blob/v2.5.2/src/core/util/next-tick.js
+ * 这种实现方案是在内部定义了两个函数microTimerFunc、macroTimerFunc两个函数，默认使用microTimerFunc。同时内部声明了一个useMacroTask，用于标记判断应该使用何种任务并，
+ * 并暴露withMacroTask API，用于在一些特别的场景下强制使用macroTask。之所改用这种方案，是因为如果全部使用macrotask会导致一些比较微妙的的问题，比如重绘和动画切换的场景(#6813)
+ * 4. 最后Vue在做了权衡之后，在Macrotask和Microtask做了取舍，又将nextTick的实现退回了2.4以前的方案，优先使用微任务。而使用微任务后带来的那些问题可以在业务中采用一些变通的方法来处理，并在
+ * 内部增加了一个isUsingMicrotask标记，标记当前任务是否使用微任务，内部部则可以根据这个标记对带来的问题做一些修复性的处理
+ * 最终优先级：Promise > MutationObserver > setImmediate > setTimeoutW
  */
 let timerFunc
 
@@ -112,7 +116,8 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {// 优先使用Promise
   }
 }
 
-// 执行异步任务
+// 执行异步任务，支持Promise
+// Promise.then > MutationObserver > setImmediate > setTimeout
 export function nextTick (cb?: Function, ctx?: Object) {
   let _resolve
   // 将回调函数压入callbacks
@@ -124,15 +129,16 @@ export function nextTick (cb?: Function, ctx?: Object) {
         handleError(e, ctx, 'nextTick')
       }
     } else if (_resolve) {// 没有cb回调且支持Promise，返回一个Promise
-      _resolve(ctx) // 将Promise的resolve执行
+      _resolve(ctx) // 解决Promise
     }
   })
   // 非pending状态下执行回调函数
   if (!pending) {
-    pending = true // 标记未待解决状态
+    pending = true // 标记为待解决状态
     timerFunc() // 执行任务
   }
   // $flow-disable-line
+  // 没有传递cb函数时，返回一个promise，支持链式调用
   if (!cb && typeof Promise !== 'undefined') {
     return new Promise(resolve => {
       _resolve = resolve
