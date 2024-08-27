@@ -13,7 +13,7 @@ const extendOptions = {
     },
     created() {
         console.log(this)
-    }
+    },
 }
 
 const Sub = Vue.extend(extendOptions)

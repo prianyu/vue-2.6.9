@@ -11,7 +11,7 @@ let uid = 0
  * directives subscribing to it.
  * 依赖收集器
  * 一个收集器可以存放都多个订阅者
- * 收集器中的订阅者为Wathcer实例
+ * 收集器中的订阅者为Watcher实例
  */
 export default class Dep {
   static target: ?Watcher; // 静态属性，用于记录当前的Watcher

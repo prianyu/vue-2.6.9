@@ -10,7 +10,7 @@ const seenObjects = new Set()
  * Recursively traverse an object to evoke all converted
  * getters, so that every nested property inside the object
  * is collected as a "deep" dependency.
- * 专门用于深度观测的
+ * 专门用于深度观测的函数
  * 通过递归访问对象的属性，触发属性对应的getter来实现依赖的收集
  */
 export function traverse (val: any) {

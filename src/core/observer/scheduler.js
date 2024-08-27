@@ -40,11 +40,17 @@ function resetSchedulerState () {
 // if the page has thousands of event listeners. Instead, we take a timestamp
 // every time the scheduler flushes and use that for all event listeners
 // attached during that flush.
+// 处理#6566这个边界条件，详情见src/platforms/web/runtime/modules/events.js/add()
+// 由于performance.now是因为它的创建是有成本的，如果每次附加事件监听器时都调用性能开销会比较大
+// 因此在每次任务调度时获取一个时间戳，并将其用于刷新期间的所有的事件监听
 export let currentFlushTimestamp = 0
 
 // Async edge case fix requires storing an event listener's attach timestamp.
-let getNow: () => number = Date.now
+// 默认的获取时间戳的方法
+let getNow: () => number = Date.now 
 
+// 在某些浏览器中，事件的时间戳可能不是高分辨率的，这会导致时间的比较出现问题
+// 所以为了解决这些兼容问题，必须根据浏览器的实际情况选择合适的时间戳获取方法
 // Determine what event timestamp the browser is using. Annoyingly, the
 // timestamp can either be hi-res (relative to page load) or low-res
 // (relative to UNIX epoch), so in order to compare time we have to use the
@@ -53,16 +59,18 @@ if (
   inBrowser &&
   window.performance &&
   typeof performance.now === 'function' &&
-  document.createEvent('Event').timeStamp <= performance.now()
+  document.createEvent('Event').timeStamp <= performance.now() 
 ) {
   // if the event timestamp is bigger than the hi-res timestamp
   // (which is evaluated AFTER) it means the event is using a lo-res timestamp,
   // and we need to use the lo-res version for event listeners as well.
+  // 说明event.timestamp使用的hi-res时间戳(相对页面加载)
   getNow = () => performance.now()
 }
 
 /**
  * Flush both queues and run the watchers.
+ * 刷新队列并执行队列中的watcher
  */
 function flushSchedulerQueue () {
   currentFlushTimestamp = getNow() // 当前刷新时的时间戳
@@ -80,21 +88,22 @@ function flushSchedulerQueue () {
   // 根据id对队列进行升序排序，主要是为了确保几件事：
   // 1. 从父组件到子组件的更新组件，因为父组件总是比子组件先创建
   // 2. 用户watcher比渲染watcher先执行，因为用户watcher比渲染watcher先创建
-  // 3. 如果在组件在父组件的watcher中销毁时，可以忽略其watcher
+  // 3. 如果子组件在父组件执行watcher的过程中被销毁时，可以忽略其watcher
+  // 排序后queue是有序的，刷新期间如果有新的watcher进队列会插入到合适的位置，保持有序性
   queue.sort((a, b) => a.id - b.id) 
 
   // do not cache length because more watchers might be pushed
   // as we run existing watchers
-  // 遍历观察者队列
-  // 由于在刷新队列的过程钟，队列可能是在不断增加的，所以在刷新队列时不能将当下的length进行缓存
+  // 遍历队列，依次执行watcher的run方法
+  // 由于在刷新队列的过程中，队列可能是在不断增加的，所以在刷新队列时不能将当下的length进行缓存
   for (index = 0; index < queue.length; index++) {
-    watcher = queue[index] // 当前观察者
+    watcher = queue[index] // 当前watcher
     if (watcher.before) { // 有before钩子则执行before钩子，比如beforeUpdate
       watcher.before()
     }
     id = watcher.id
     has[id] = null // 执行后从队列中移除观察者
-    watcher.run() // 执行观察者的run方法，即重新求值并执行回调
+    watcher.run() // 执行watcher的run方法，即重新求值并执行回调
     // in dev build, check and stop circular updates.
     // has[id]不为bull，说明run的时候又触发了重新求值，陷入了循环
     // 如vm.$watch("test", function(){ this.test = new Date()})
@@ -127,6 +136,7 @@ function flushSchedulerQueue () {
   callUpdatedHooks(updatedQueue)// 执行updated生命周期
 
   // devtool hook
+  // 触发开发者工具的flush事件
   /* istanbul ignore if */
   if (devtools && config.devtools) {
     devtools.emit('flush')
@@ -175,21 +185,21 @@ function callActivatedHooks (queue) {
  * Push a watcher into the watcher queue.
  * Jobs with duplicate IDs will be skipped unless it's
  * pushed when the queue is being flushed.
- * 将观察者推进观察者队列
- * id重复的任务将被忽略，除非在刷新队列时将其推进队列
+ * 将watcher添加到观察者队列中
+ * 重复的watcher将被忽略，除非在刷新队列时将其推进队列
  */
 export function queueWatcher (watcher: Watcher) {
   const id = watcher.id // 观察者id
   if (has[id] == null) { // 队列中没有该观察者
     has[id] = true // 队列中标记该观察者
-    if (!flushing) { // 如果还没刷新，则将观察 者压入队列
+    if (!flushing) { 
+      // 如果不是在刷新阶段则将watcher压入队列（无序）
       queue.push(watcher)
-    } else {
+    } else { 
+      // 如果已经在刷新阶段，则将watcher插入到队列中合适的位置，以保证队列的有序
+      // 也就是说队列刷新的过程中queue是可能会改变的
       // if already flushing, splice the watcher based on its id
       // if already past its id, it will be run next immediately.
-      // 如果已经进入了队列刷新阶段，则根据当前watcher的id
-      //将当前的watcher拼接到刷新队列中（刷新队列时会对队列做排序）
-
       let i = queue.length - 1
       while (i > index && queue[i].id > watcher.id) {
         i--
@@ -197,13 +207,15 @@ export function queueWatcher (watcher: Watcher) {
       queue.splice(i + 1, 0, watcher)
     }
     // queue the flush
-    if (!waiting) { // 等待刷新队列
+    // 如果还没有等待刷新，则设置等待刷新状态，并调用nextTick刷新队列
+    // 即queueWatcher函数多次调用时，在waiting为true期间只会执行一次队列的刷新
+    if (!waiting) {
       waiting = true
-
       if (process.env.NODE_ENV !== 'production' && !config.async) {
         flushSchedulerQueue()
         return
       }
+      // 异步刷新队列
       nextTick(flushSchedulerQueue)
     }
   }

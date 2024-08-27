@@ -237,7 +237,6 @@ function initComputed (vm: Component, computed: Object) {
   const watchers = vm._computedWatchers = Object.create(null) // 创建计算属性的watcher对象
   // computed properties are just getters during SSR
   const isSSR = isServerRendering()
-  debugger
   for (const key in computed) {
     // computed可以是函数，也可以是有getter和setter的对象
     const userDef = computed[key]

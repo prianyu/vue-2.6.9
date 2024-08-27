@@ -102,7 +102,7 @@ export function initMixin (Vue: Class<Component>) {
       mark(endTag)
       measure(`vue ${vm._name} init`, startTag, endTag)
     }
-    
+
     // 传入了el，自动挂载
     if (vm.$options.el) {
       vm.$mount(vm.$options.el)

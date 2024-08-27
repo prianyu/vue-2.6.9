@@ -312,7 +312,7 @@ export function defineReactive (
       }
       // 新设置的值是一个object，需要重新观测
       childOb = !shallow && observe(newVal)
-      // 通知依赖更新
+      // 通知依赖，触发watcher更新
       dep.notify()
     }
   })

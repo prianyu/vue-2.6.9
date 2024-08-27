@@ -111,7 +111,7 @@ export function initExtend (Vue: GlobalAPI) {
 function initProps (Comp) {
   const props = Comp.options.props
   for (const key in props) {
-    // 原型上的属性访问代理至_props
+    // 原型上的props属性访问代理至_props
     proxy(Comp.prototype, `_props`, key)
   }
 }
