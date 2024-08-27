@@ -73,10 +73,10 @@ export function initGlobalAPI (Vue: GlobalAPI) {
   // keepAlive组件
   extend(Vue.options.components, builtInComponents)
 
-  initUse(Vue) // Vue.use
-  initMixin(Vue) // Vue.mixin
-  initExtend(Vue) // Vue.extend
-  initAssetRegisters(Vue) // Vue.directive, Vue.component, Vue.filter
+  initUse(Vue) // 定义Vue.use
+  initMixin(Vue) // 定义Vue.mixin
+  initExtend(Vue) // 定义Vue.extend
+  initAssetRegisters(Vue) // 定义Vue.directive, Vue.component, Vue.filter
 }
 
 
