@@ -72,7 +72,7 @@ export function initRender (vm: Component) {
   }
 }
 
-export let currentRenderingInstance: Component | null = null // 当前渲染的实例
+export let currentRenderingInstance: Component | null = null // 当前渲染的组件实例
 
 // for testing only
 export function setCurrentRenderingInstance (vm: Component) {
@@ -81,13 +81,15 @@ export function setCurrentRenderingInstance (vm: Component) {
 
 export function renderMixin (Vue: Class<Component>) {
   // install runtime convenience helpers
+  // 添加各种渲染相关的辅助方法
   installRenderHelpers(Vue.prototype)
 
+  // 添加$nextTick方法
   Vue.prototype.$nextTick = function (fn: Function) {
     return nextTick(fn, this)
   }
   // 需要区分vnode和$vnode的区别和联系
-  // $vnode是组件占位符，vnode是其真实渲染的DOM元素的虚拟节点，执行render函数生成
+  // $vnode是组件占位符，vnode是其真实渲染的DOM元素的虚拟节点，通过执行render函数生成
   // vnode.parent === vm.$vnode === vm.$options._parentVnode
   // 以组件<custom>为例，$vnode则是custom本身，其最终可能为{tag: "vue-component-1-cutrom", ...}
   // vnode则为custom组件内容根节点对应的vnode
@@ -127,12 +129,15 @@ export function renderMixin (Vue: Class<Component>) {
       currentRenderingInstance = vm // 标记当前正在渲染的组件实例
       // 调用render函数，接收的参数为vm.$createElement函数
       // vm._renderProxy一般就是vm
+      // 调用render函数后会从实例属性中取值，从而触发相关属性的getter函数，触发渲染watcher的依赖收集
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
       handleError(e, vm, `render`)
       // return error render result,
       // or previous vnode to prevent render error causing blank component
       /* istanbul ignore else */
+      // 非生产环境下尝试使用调用vm.$options.renderError函数返回的结果
+      // 出错的情况下，使用vm._vnode(上一次渲染得到的vnode，在_update方法生成)
       if (process.env.NODE_ENV !== 'production' && vm.$options.renderError) {
         try {
           vnode = vm.$options.renderError.call(vm._renderProxy, vm.$createElement, e)
@@ -140,7 +145,7 @@ export function renderMixin (Vue: Class<Component>) {
           handleError(e, vm, `renderError`)
           vnode = vm._vnode
         }
-      } else {
+      } else { // 渲染错误，返回vm._vnode
         vnode = vm._vnode
       }
     } finally {

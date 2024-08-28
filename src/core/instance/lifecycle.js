@@ -27,7 +27,7 @@ export let activeInstance: any = null // 激活的实例
 export let isUpdatingChildComponent: boolean = false
 
 
-// 切换当前激活的实例
+// 切换当前激活的实例，并返回一个切换回上一个激活实例的函数
 export function setActiveInstance(vm: Component) {
   const prevActiveInstance = activeInstance // 缓存上一个activeInstance
   activeInstance = vm // 当前激活的实例
@@ -72,13 +72,15 @@ export function initLifecycle (vm: Component) {
 }
 
 // 添加_update方法
+// 1. 添加_vnode属性，存储由render函数生成的vnode
+// 2. 
 export function lifecycleMixin (Vue: Class<Component>) {
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
-    const prevEl = vm.$el // 页面的挂载点，是一个真实的DOM
+    const prevEl = vm.$el // 当前实例老的根DOM节点，根节点初次渲染时是页面的挂载点
     const prevVnode = vm._vnode // 老的VNode
     const restoreActiveInstance = setActiveInstance(vm) //切换当前激活的实例
-    vm._vnode = vnode // 由render函数生成的准备更新渲染的新的VNode
+    vm._vnode = vnode // 更新虚拟节点，由render函数生成的准备更新渲染的新的VNode
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
     if (!prevVnode) {// 初次渲染节点，对比$el与vnode
@@ -86,27 +88,28 @@ export function lifecycleMixin (Vue: Class<Component>) {
       // hydrating:false表示非服务端渲染, removeOnly是给transition-group用的
       // 此处会对$el重新赋值，也就是对$el会有一次替换的过程
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
-    } else { // 更新节点，则比对前后两次虚拟节点
+    } else { // 更新节点，则比对前后两次虚拟节点，生成更新后的DOM
       // updates
       vm.$el = vm.__patch__(prevVnode, vnode)
     }
 
     restoreActiveInstance() //  __patch__完成后恢复到上一次激活的实例（父实例）
 
+    //__vue__是一个私有属性，可能被一些插件（如Vue Devtools）用来通过DOM来寻找对应的Vue实例
     // update __vue__ reference
-    if (prevEl) { // 移除旧元素的__vue__引用
+    if (prevEl) { // 移除旧的DOM元素对__vue__引用
       prevEl.__vue__ = null
     }
-    if (vm.$el) { // 最新的__vue__引用
+    if (vm.$el) { // 最新DOM元素添加对__vue__的引用
       vm.$el.__vue__ = vm
     }
     // if parent is an HOC, update its $el as well
-    // 父节点是个高阶组件，则更新其元素节点
-    //  @suspense
+    // 父节点是个高阶组件，则更新其$el属性
+    // 即当前组件是父组件的根元素时（<Parent><Child /></Parent>）
     if (vm.$vnode && vm.$parent && vm.$vnode === vm.$parent._vnode) {
       vm.$parent.$el = vm.$el
     }
-    // 更新的钩子由调度器来调用，确保在父更新的钩子中更新子项
+    // upadted钩子由调度器来调用，确保子组件在父组件的updated钩子执行前已经更新完毕
     // updated hook is called by the scheduler to ensure that children are
     // updated in a parent's updated hook.
   }
@@ -131,7 +134,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     if (parent && !parent._isBeingDestroyed && !vm.$options.abstract) {
       remove(parent.$children, vm)
     }
-    // 将渲染wacher卸载
+    // 将渲染watcher卸载
     if (vm._watcher) {
       vm._watcher.teardown()
     }
@@ -179,7 +182,7 @@ export function mountComponent (
 ): Component {
   // 将el赋值给vm.$el，此时的el已经是一个DOM元素      
   vm.$el = el
-  // 没有render函数会将render函数重置为创建空节点的函数
+  // 没有render函数会将render函数重置为创建空节点（注释节点）的函数
   // 同时如果有el和template的话，说明el或者template没有被转化为render函数，
   // 说明使用的是runtime-only版本
   if (!vm.$options.render) {
@@ -205,7 +208,8 @@ export function mountComponent (
   // 执行挂载前的生命周期钩子
   callHook(vm, 'beforeMount')
 
-  let updateComponent // 用于更新虚拟DOM并生成真实Dom的函数
+  // 定义用于更新虚拟DOM并生成真实Dom的函数
+  let updateComponent // 
   /* istanbul ignore if */
   if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
     updateComponent = () => {
@@ -233,10 +237,11 @@ export function mountComponent (
   // we set this to vm._watcher inside the watcher's constructor
   // since the watcher's initial patch may call $forceUpdate (e.g. inside child
   // component's mounted hook), which relies on vm._watcher being already defined
-  // 定义渲染Watcher：vm._watcher，调用$forceUpdate时会依赖渲染watcher
+  // 定义渲染Watcher
+  // 渲染watcher初始化时会被添加到vm._watcher，这是因为调用$forceUpdate时会依赖渲染watcher来实现强制更新
   // 渲染watcher实例化化会执行watcher.get方法，进而执行updateComponent,完成首次渲染
   // 首次渲染会触发依赖的数据的getter函数，进而实现依赖收集
-  // 后续的数据更新则会通知渲染watcher更新，实现视图的更新
+  // 后续的数据更新则会通知渲染watcher更新，实现的更新
   new Watcher(vm, updateComponent, noop, {
     before () {
       // 更新前，判断是否已经挂载过，如果挂载过了就执行beforeUpate钩子
@@ -250,7 +255,9 @@ export function mountComponent (
   // manually mounted instance, call mounted on self
   // mounted is called for render-created child components in its inserted hook
   // 将实例标记为已挂载状态，执行挂载完成钩子
-  if (vm.$vnode == null) { // 说明是首次挂载
+  // 当实例是手动挂载的时候（vm.$mount）会显式的调用mounted钩子
+  // 当实例时通过渲染函数创建的子组件时，它们的mounted钩子会在inserted钩子中被调用
+  if (vm.$vnode == null) {// 为null说明是根组件，不是子组件
     vm._isMounted = true
     callHook(vm, 'mounted')
   }

@@ -33,12 +33,13 @@ extend(Vue.options.components, platformComponents) // 添加transition、transit
 // 浏览器环境下添加__patch__方法
 Vue.prototype.__patch__ = inBrowser ? patch : noop
 
-// 与端（客户端、服务端）无关的$mount方法
+// 与端无关的通用的$mount方法
 // 该方法无compiler，在有compiler的环境下，会被重写
 Vue.prototype.$mount = function (
   el?: string | Element, // 挂载元素
   hydrating?: boolean // 是否为服务端渲染
 ): Component {
+  // debugger
   el = el && inBrowser ? query(el) : undefined // 在浏览器环境下获取元素
   return mountComponent(this, el, hydrating) // 执行挂载
 }

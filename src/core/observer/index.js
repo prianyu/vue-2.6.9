@@ -159,7 +159,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
     ob = new Observer(value) // 创建Observer实例，创建后的实例会存在value.__ob__中
   }
   if (asRootData && ob) { // 实例的根数据，则ob的实例引用数+1
-    // vmCount大于0则说明其为根数据，在操作上会有一些限制
+    // vmCount大于0则说明其为组件的根数据，在操作上会有一些限制
     // Vue.set和Vue.del方法会判断vmCount是否大于0，来决定是否处理
     // 也就是Vue.set和Vue.del是无法直接对根数据的key进行处理的
     ob.vmCount++
