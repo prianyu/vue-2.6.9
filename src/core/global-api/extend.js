@@ -108,6 +108,7 @@ export function initExtend (Vue: GlobalAPI) {
   }
 }
 
+// 在子类构造器的原型上添加props属性访问的代理
 function initProps (Comp) {
   const props = Comp.options.props
   for (const key in props) {

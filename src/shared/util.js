@@ -82,6 +82,7 @@ export function isRegExp (v: any): boolean {
  * Check if val is a valid array index.
  */
 // 判断是否为合法的数组索引
+// 可以转为大于等于0且有界的整数则有效
 export function isValidArrayIndex (val: any): boolean {
   const n = parseFloat(String(val))
   return n >= 0 && Math.floor(n) === n && isFinite(val)

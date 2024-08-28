@@ -419,7 +419,8 @@ function createWatcher (
   handler: any,
   options?: Object
 ) {
-  if (isPlainObject(handler)) { // 对象，则取handler属性
+  // handle是对象，则取handler.handle属性作为回调函数
+  if (isPlainObject(handler)) { 
     options = handler // 选项重载
     handler = handler.handler
   }
@@ -462,13 +463,17 @@ export function stateMixin (Vue: Class<Component>) {
   Vue.prototype.$set = set
   Vue.prototype.$delete = del
 
+  // 添加$watch方法，返回一个取消观察的函数
   Vue.prototype.$watch = function (
     expOrFn: string | Function,
     cb: any,
     options?: Object
   ): Function {
     const vm: Component = this
-    if (isPlainObject(cb)) { // 参数重载，最终会变成vm.$watch(vm, cb.handler, cb)
+    // cb是对象，则使用crreateWatcher方法创建watcher
+    // craeteWatcher会先规范化参数后再调用vm.$watch方法创建watcher
+    // 最终等价于vm.$watch(expOrFn, cb.handler, cb)
+    if (isPlainObject(cb)) { 
       return createWatcher(vm, expOrFn, cb, options)
     }
     options = options || {}

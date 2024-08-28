@@ -323,28 +323,32 @@ export function defineReactive (
  * triggers change notification if the property doesn't
  * already exist.
  */
-// $set, Vue.set
+// vm.$set, Vue.set方法定义
+// 1. 非对象类型、vm实例以及根data是不允许被设置属性的
+// 2. 对于数组，使用数组的splice方法设置对应索引的上的元素
+// 3. 对于对象，如果设置对象上本身已经存在的值或者如果原本不存在但对象本身不是响应式的则会直接修改，否则会新增响应式属性并通知更新
 export function set (target: Array<any> | Object, key: any, val: any): any {
+  // 只能在对象上设置属性
   if (process.env.NODE_ENV !== 'production' &&
     (isUndef(target) || isPrimitive(target))
   ) {
     warn(`Cannot set reactive property on undefined, null, or primitive value: ${(target: any)}`)
   }
   // 如果是数组，且key是有效的index，则调用数组上的splice方法即可完成替换
-  // 需要更新数组的长度
+  // 需要更新数组的长度确保设置的元素的索引正确
   if (Array.isArray(target) && isValidArrayIndex(key)) {
     target.length = Math.max(target.length, key)
     target.splice(key, 1, val)
     return val
   }
-  // 如果key在对象自身中已经存在，则直接赋值即可，避免重复触发
+  // 如果key在对象自身中已经存在，则直接赋值即可，避免重复做响应式数据的转换
   if (key in target && !(key in Object.prototype)) {
     target[key] = val
     return val
   }
   const ob = (target: any).__ob__
 
-  // 如果是vue实例或者根数据，则不应该被设置
+  // 不能直接设置vue实例或者根data上的属性
   if (target._isVue || (ob && ob.vmCount)) {
     process.env.NODE_ENV !== 'production' && warn(
       'Avoid adding reactive properties to a Vue instance or its root $data ' +
@@ -358,7 +362,7 @@ export function set (target: Array<any> | Object, key: any, val: any): any {
     target[key] = val
     return val
   }
-  // 如果对象是响应式的，检测新添加的属性值
+  // 如果对象是响应式的，在响应式对象上添加新的属性
   defineReactive(ob.value, key, val)
   // 对象变化了，触发通知更新
   // 这里也是为什么对于obj[key].__ob__.dep要重复收集一次依赖的原因
@@ -370,7 +374,10 @@ export function set (target: Array<any> | Object, key: any, val: any): any {
 /**
  * Delete a property and trigger change if necessary.
  */
-// Vue.delete, $delete
+// Vue.delete, vm.$delete方法定义
+// 1. 非对象类型、vm实例以及根data是不允许删除属性的
+// 2. 对于数组，使用数组的splice方法删除对应索引的上的元素
+// 3. 对于对象，如果设置对象不存在属性则不处理，存在则删除并通知更新
 export function del (target: Array<any> | Object, key: any) {
   if (process.env.NODE_ENV !== 'production' &&
     (isUndef(target) || isPrimitive(target))
@@ -406,20 +413,21 @@ export function del (target: Array<any> | Object, key: any) {
 }
 
 /**
+ * 数组类型的数据的依赖收集
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
- * 数组的可以借助变异方法实现拦截，数组的项是没有闭包的dep的，
+ * 数组可以借助变异方法实现拦截，数组的项是没有闭包的dep的，
  * 因此我们不能像对象那样对属性进行拦截访问。
  * 对于引用类型的数组项，虽然其没有闭包的dep，但是有__ob__.dep
  * 可以通过数据项存储的__ob__来获取到dep进行依赖收集，
- * 这样在后续如果有为数组的项进行动态新增属性或者和删除属性时，我们就可以
- * 通过__ob__.dep上收集到的依赖来触发依赖的更新
+ * 这样在后续如果有为数组的项进行动态新增属性或者和删除属性时，我们就可以通过__ob__.dep上收集到的依赖来触发依赖的更新
  */
 function dependArray (value: Array<any>) {
+  // 遍历数组
   for (let e, i = 0, l = value.length; i < l; i++) {
     e = value[i]
-    e && e.__ob__ && e.__ob__.dep.depend()
-    if (Array.isArray(e)) { // 数组，递归收集
+    e && e.__ob__ && e.__ob__.dep.depend() // 如果数据项是对象类型的，则收集依赖
+    if (Array.isArray(e)) { // 如果数据项是数组，递归收集
       dependArray(e)
     }
   }
