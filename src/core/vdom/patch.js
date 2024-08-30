@@ -163,11 +163,12 @@ export function createPatchFunction(backend) {
   let creatingElmInVPre = 0;
 
   // 创建元素，存在vnode.elm中
-  // 如果传递了parentElm则会将创建的元素插入到DOM中
-  // 执行vnode和modules的create钩子，如果vnode有insert钩子
-  // 会将vnode压入insertedVnodeQueue中
+
   /**
-   *
+   * 创建元素，并将创建的元素存储到vnode.elm中
+   * 如果传递了parentElm则会将创建的元素插入到DOM中
+   * 创建后会执行vnode和modules的create钩子
+   * 如果vnode有insert钩子，会将vnode压入insertedVnodeQueue中
    * @param {VNode} vnode 虚拟节点
    * @param {Array} insertedVnodeQueue 插入的虚拟节点队列
    * @param {HTMLElement} parentElm 父级真实DOM元素
@@ -204,6 +205,7 @@ export function createPatchFunction(backend) {
     vnode.isRootInsert = !nested; // for transition enter check
     // 创建子组件，如果是子组件的话，创建后子组件的DOM已经插入到父元素了，最后会返回一个true
     // 组件创建时会自行处理其内部的节点的创建和插入，所以无需再处理后面的流程了
+    // 如果是普通元素该给逻辑啥不做，返回undefined
     if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
       return;
     }
@@ -298,7 +300,7 @@ export function createPatchFunction(backend) {
     if (isDef(i)) {
       // 组件实例是否已经存在且被keep-alive包裹
       // componentInstance是子组件实例化的时候往vnode身上添加的Vue实例属性，
-      // 即执行了子组件的init钩子后就会有
+      // 即执行了子组件的data.hook.init钩子后就会有
       const isReactivated = isDef(vnode.componentInstance) && i.keepAlive;
       // 如果当前vnode是一个组件，则调用组件init钩子
       // init的钩子是在调用createElement生成vnode时，调用installComponentHooks合并钩子时得到的
@@ -315,7 +317,7 @@ export function createPatchFunction(backend) {
       // 在调用init钩子之后，如果vnode是子组件，它应该创建了一个子Vue实例并挂载了它。
       // 此时vnode上就会有componentInstance属性（Vue实例）
       // 调用initComponent之后，子组件设置了占位符vnode的elm。
-      // 在这种情况下，说明我们创建了一个子组件，可以可以返回元素并完成。
+      // 在这种情况下，说明我们创建了一个子组件，可以返回元素并完成。
       if (isDef(vnode.componentInstance)) {
         // 组件实例
         // 设置占位vnode的elm
@@ -338,6 +340,7 @@ export function createPatchFunction(backend) {
   // 2. 从vnode.componentInstance.$el获取真实节点给vnode.elm
   function initComponent(vnode, insertedVnodeQueue) {
     if (isDef(vnode.data.pendingInsert)) {
+      // 合并insert钩子
       // 获取被延迟执行的insert钩子，压入insertedVnodeQueue
       insertedVnodeQueue.push.apply(
         insertedVnodeQueue,
@@ -1112,15 +1115,17 @@ export function createPatchFunction(backend) {
    * @param {Boolean} hydrating 是否为服务端渲染
    * @param {Boolean} removeOnly 仅用于transition相关的标识
    * @returns {VNode} 真实DOM
-   * 1. 如果新节点不存在且老节点存在，则销毁老节点，执行老节点的相关钩子
-   * 2. 如果有新的节点但是没有老节点，则创建一个新的元素，这种情况通常是子组件的初次渲染
+   * 1. 如果新节点不存在且老节点存在，则销毁老节点，执行老节点的相关钩子，返回值是undefined
+   * 2. 如果有新的节点但是没有老节点，则创建一个新的元素，这种情况通常是子组件的初次渲染，此时会标记为初次patch
    * 3. 如果新老节点同时存在
    *    3.1 老节点不是真实DOM（根元素首次挂载）或新老节点是相同的节点（根节点没被替换），则进行新旧节点的diff算法，生成新的DOM
    *    3.2 老节点是真实DOM，说明是首次根元素挂载，将真实DOM转为空的VNode，并直接将自身作为空VNode的elem属性
-   * 4.
+   * 4. 经过以上的处理后，当前组件的DOM已经生成，生成的DOM会作为返回值被返回，返回后会被赋值给实例的$el属性。
+   *    在返回之前还会处理vnode的insert钩子，如果DOM已经真实插入了，那么会执行所有的insert钩子，否则会将vnode压入到队列中，延迟到DOM插入后再执行
    *
    */
   return function patch(oldVnode, vnode, hydrating, removeOnly) {
+    debugger;
     // 新节点为空，且有老节点则销毁老节点
     if (isUndef(vnode)) {
       if (isDef(oldVnode)) invokeDestroyHook(oldVnode); // 老节点上执行销毁的钩子
@@ -1131,7 +1136,8 @@ export function createPatchFunction(backend) {
     const insertedVnodeQueue = []; // 用于收集插入的虚拟节点，以便后续调用挂载的钩子
 
     if (isUndef(oldVnode)) {
-      // 有新节点，没有老节点，则创建一个新的根节点
+      // 有新节点，没有老节点
+      // 则创建一个新的根节点
       // 这种情况下一般是子组件初次挂载的时候，也就是没有挂载的根节点，只是生成组件的根节点元素
       // 比如<div id="app"><Child /></div>
       // Child组件的初次渲染就会走到这里
