@@ -29,7 +29,7 @@ export default class VNode {
   devtoolsMeta: ?Object; // used to store functional render context for devtools
   fnScopeId: ?string; // functional scope id support
 
-  constructor (
+  constructor(
     tag?: string, // 标签
     data?: VNodeData, // 数据
     children?: ?Array<VNode>, // 子元素
@@ -39,49 +39,49 @@ export default class VNode {
     componentOptions?: VNodeComponentOptions, // 组件选项
     asyncFactory?: Function // 异步组件的执行函数
   ) {
-    this.tag = tag 
-    this.data = data
-    this.children = children
-    this.text = text
-    this.elm = elm
-    this.ns = undefined
-    this.context = context
-    this.fnContext = undefined
-    this.fnOptions = undefined
-    this.fnScopeId = undefined
-    this.key = data && data.key
-    this.componentOptions = componentOptions
-    this.componentInstance = undefined
-    this.parent = undefined
-    this.raw = false
-    this.isStatic = false
-    this.isRootInsert = true
-    this.isComment = false
-    this.isCloned = false
-    this.isOnce = false
-    this.asyncFactory = asyncFactory
-    this.asyncMeta = undefined
-    this.isAsyncPlaceholder = false
+    this.tag = tag;
+    this.data = data;
+    this.children = children;
+    this.text = text;
+    this.elm = elm;
+    this.ns = undefined;
+    this.context = context;
+    this.fnContext = undefined;
+    this.fnOptions = undefined;
+    this.fnScopeId = undefined;
+    this.key = data && data.key;
+    this.componentOptions = componentOptions;
+    this.componentInstance = undefined;
+    this.parent = undefined;
+    this.raw = false;
+    this.isStatic = false;
+    this.isRootInsert = true;
+    this.isComment = false;
+    this.isCloned = false;
+    this.isOnce = false;
+    this.asyncFactory = asyncFactory;
+    this.asyncMeta = undefined;
+    this.isAsyncPlaceholder = false;
   }
 
   // DEPRECATED: alias for componentInstance for backwards compat.
   /* istanbul ignore next */
-  get child (): Component | void {
-    return this.componentInstance
+  get child(): Component | void {
+    return this.componentInstance;
   }
 }
 
 // 创建注释节点
-export const createEmptyVNode = (text: string = '') => {
-  const node = new VNode()
-  node.text = text
-  node.isComment = true
-  return node
-}
+export const createEmptyVNode = (text: string = "") => {
+  const node = new VNode();
+  node.text = text;
+  node.isComment = true;
+  return node;
+};
 
 // 创建文本节点
-export function createTextVNode (val: string | number) {
-  return new VNode(undefined, undefined, undefined, String(val))
+export function createTextVNode(val: string | number) {
+  return new VNode(undefined, undefined, undefined, String(val));
 }
 
 // optimized shallow clone
@@ -89,7 +89,7 @@ export function createTextVNode (val: string | number) {
 // multiple renders, cloning them avoids errors when DOM manipulations rely
 // on their elm reference.
 // 克隆节点，会标记isCloned为true
-export function cloneVNode (vnode: VNode): VNode {
+export function cloneVNode(vnode: VNode): VNode {
   const cloned = new VNode(
     vnode.tag,
     vnode.data,
@@ -102,15 +102,15 @@ export function cloneVNode (vnode: VNode): VNode {
     vnode.context,
     vnode.componentOptions,
     vnode.asyncFactory
-  )
-  cloned.ns = vnode.ns
-  cloned.isStatic = vnode.isStatic
-  cloned.key = vnode.key
-  cloned.isComment = vnode.isComment
-  cloned.fnContext = vnode.fnContext
-  cloned.fnOptions = vnode.fnOptions
-  cloned.fnScopeId = vnode.fnScopeId
-  cloned.asyncMeta = vnode.asyncMeta
-  cloned.isCloned = true
-  return cloned
+  );
+  cloned.ns = vnode.ns;
+  cloned.isStatic = vnode.isStatic;
+  cloned.key = vnode.key;
+  cloned.isComment = vnode.isComment;
+  cloned.fnContext = vnode.fnContext;
+  cloned.fnOptions = vnode.fnOptions;
+  cloned.fnScopeId = vnode.fnScopeId;
+  cloned.asyncMeta = vnode.asyncMeta;
+  cloned.isCloned = true;
+  return cloned;
 }

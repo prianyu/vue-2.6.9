@@ -147,7 +147,7 @@ export function createPatchFunction(backend) {
   function isUnknownElement(vnode, inVPre) {
     return (
       !inVPre &&
-      !vnode.ns &&
+      !vnode.ns && // 排除带命名空间的元素
       !(
         config.ignoredElements.length &&
         config.ignoredElements.some(ignore => {
@@ -155,8 +155,8 @@ export function createPatchFunction(backend) {
             ? ignore.test(vnode.tag)
             : ignore === vnode.tag;
         })
-      ) &&
-      config.isUnknownElement(vnode.tag)
+      ) && // 忽略的自定义元素
+      config.isUnknownElement(vnode.tag) // 判断是否为未知元素的方法
     );
   }
 
@@ -194,10 +194,10 @@ export function createPatchFunction(backend) {
       // potential patch errors down the road when it's used as an insertion
       // reference node. Instead, we clone the node on-demand before creating
       // associated DOM element for it.
-      // 此vnode在以前的渲染中使用过
-      // 现在，它被用作一个新节点，当它被用作插入参考节点时，覆盖它的elm会导致潜在的补丁错误。
-      // 相反，我们在为节点创建关联的DOM元素之前按需克隆节点。
-
+      // 节点复用
+      // vnode在此之前已经被渲染过了，此时它又被作为新的节点来使用，如果直接覆盖它的elem属性会导致
+      // 当它被用作插入参考节点时，出现潜在的补丁错误
+      // 因此，在为该节点创建关联DOM元素之前，先克隆该节点
       vnode = ownerArray[index] = cloneVNode(vnode);
     }
 
@@ -471,11 +471,18 @@ export function createPatchFunction(backend) {
   // this is implemented as a special case to avoid the overhead
   // of going through the normal attribute patching process.
   // 设置作用域CSS的作用域id
+  // 为带有CSS scoped的组件设置scopeId属性，这样可以确保CSS作用域仅限定于某个组件内部而不会影响全局的样式
   function setScope(vnode) {
     let i;
+    // 函数式组件的scopeId设置
     if (isDef((i = vnode.fnScopeId))) {
       nodeOps.setStyleScope(vnode.elm, i);
     } else {
+      // 遍历虚拟节点的祖先，查找_scopedId并给当前DOM元素设置
+      // 确保父组件的样式可以穿透到子组件，被子组件继承
+      // 这种设计是为了让父组件可以从布局的角度出发，调整其子组件根元素的样式
+      // $options._scopeId是VueLoader编译单文件组件时添加的属性
+      // debugger;
       let ancestor = vnode;
       while (ancestor) {
         if (isDef((i = ancestor.context)) && isDef((i = i.$options._scopeId))) {
@@ -485,11 +492,12 @@ export function createPatchFunction(backend) {
       }
     }
     // for slot content they should also get the scopeId from the host instance.
+    // 如果是插槽，还需要从宿主组件实例中获取scopedId并设置
     if (
-      isDef((i = activeInstance)) &&
-      i !== vnode.context &&
-      i !== vnode.fnContext &&
-      isDef((i = i.$options._scopeId))
+      isDef((i = activeInstance)) && // 当前正在渲染的组件实例
+      i !== vnode.context && // 虚拟节点的上下文
+      i !== vnode.fnContext && // 虚拟节点的函数式上下文
+      isDef((i = i.$options._scopeId)) // 组件实例的_scopeId
     ) {
       nodeOps.setStyleScope(vnode.elm, i);
     }

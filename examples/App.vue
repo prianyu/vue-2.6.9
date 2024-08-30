@@ -8,7 +8,9 @@
         <!-- 自定义setter和getter -->
         <!-- <CustomSetterGetter /> -->
         <!-- HOC -->
-        <HOC />
+        <!-- <HOC /> -->
+        <!-- CSS scoped -->
+        <CssScope />
     </div>
 </template>
 <script>
@@ -17,12 +19,14 @@ import TemplateRender, { CustomRender } from './components/InvalidKey.vue'
 import StaticProps from './components/StaticProps.vue';
 import CustomSetterGetter from './components/CustomSetterGetter.vue';
 import HOC from './components/HOC.vue';
+import CssScope from './components/CssScope.vue';
 export default {
     components: {
         TemplateRender, CustomRender,
         StaticProps,
         CustomSetterGetter,
-        HOC
+        HOC,
+        CssScope
     },
 }
 </script>
