@@ -1125,7 +1125,6 @@ export function createPatchFunction(backend) {
    *
    */
   return function patch(oldVnode, vnode, hydrating, removeOnly) {
-    debugger;
     // 新节点为空，且有老节点则销毁老节点
     if (isUndef(vnode)) {
       if (isDef(oldVnode)) invokeDestroyHook(oldVnode); // 老节点上执行销毁的钩子

@@ -1,5 +1,5 @@
 <template>
-    <div id="child">
+    <div id="child" v-show>
         我是子元素
         <slot></slot>
     </div>
