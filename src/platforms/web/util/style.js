@@ -42,6 +42,7 @@ export function normalizeStyleBinding (bindingStyle: any): ?Object {
 }
 
 /**
+ * 父子组件的样式合并
  * parent component style should be after child's
  * so that parent component's style could override it
  * 父组件的样式会优先与子组件
@@ -56,6 +57,7 @@ export function normalizeStyleBinding (bindingStyle: any): ?Object {
 export function getStyle (vnode: VNodeWithData, checkChild: boolean): Object {
   const res = {}
   let styleData
+  // 嵌套组件合并子组件的样式
   if (checkChild) {
     let childNode = vnode
     while (childNode.componentInstance) {
@@ -74,6 +76,7 @@ export function getStyle (vnode: VNodeWithData, checkChild: boolean): Object {
     extend(res, styleData)
   }
 
+  // 合并嵌套的祖先组件的style
   let parentNode = vnode
   while ((parentNode = parentNode.parent)) {
     if (parentNode.data && (styleData = normalizeStyleData(parentNode.data))) {

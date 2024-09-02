@@ -12,7 +12,8 @@
         <!-- CSS scoped -->
         <!-- <CssScope /> -->
         <!-- class合并 -->
-        <MergeClass />
+        <MergeClass class="outer"/>
+        
     </div>
 </template>
 <script>
@@ -30,7 +31,7 @@ export default {
         CustomSetterGetter,
         HOC,
         CssScope,
-        MergeClass
+        MergeClass,
     },
 }
 </script>

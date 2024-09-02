@@ -2,10 +2,15 @@
 
 import { getStyle, normalizeStyleBinding } from 'web/util/style'
 import { cached, camelize, extend, isDef, isUndef, hyphenate } from 'shared/util'
+// style属性处理
+//----------------create/update钩子----------
 
-const cssVarRE = /^--/
-const importantRE = /\s*!important$/
+const cssVarRE = /^--/ // CSS变量名前缀
+const importantRE = /\s*!important$/ // !important样式后缀
 // 设置style属性
+// 处理css变量
+// 处理浏览器属性前缀
+// 处理!important的样式声明
 const setProp = (el, name, val) => {
   /* istanbul ignore if */
   if (cssVarRE.test(name)) { // css变量设置
@@ -48,6 +53,9 @@ const normalize = cached(function (prop) {
   }
 })
 
+// 1. 合并嵌套组件中父子组件的样式
+// 2. 将不存在于新 样式中的旧样式置空
+// 3. 遍历新的样式修改或设置样式到DOM
 function updateStyle (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const data = vnode.data
   const oldData = oldVnode.data
@@ -79,7 +87,7 @@ function updateStyle (oldVnode: VNodeWithData, vnode: VNodeWithData) {
     ? extend({}, style)
     : style
 
-  // 获取新的样式
+  // 获取新的样式，合并父子组件的样式
   const newStyle = getStyle(vnode, true)
 
   // 遍历旧的样式，对于不再需要的样式设置为空
