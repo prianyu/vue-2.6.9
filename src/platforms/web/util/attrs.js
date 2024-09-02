@@ -38,7 +38,7 @@ export const convertEnumeratedValue = (key: string, value: any) => {
       : 'true'
 }
 
-// 检测布尔属性
+// 检测属性是否为布尔类型的属性
 export const isBooleanAttr = makeMap(
   'allowfullscreen,async,autofocus,autoplay,checked,compact,controls,declare,' +
   'default,defaultchecked,defaultmuted,defaultselected,defer,disabled,' +
@@ -48,16 +48,20 @@ export const isBooleanAttr = makeMap(
   'truespeed,typemustmatch,visible'
 )
 
+// xlink命名空间
 export const xlinkNS = 'http://www.w3.org/1999/xlink'
 
+// 判断属性名是否以xlink:开头，如xlink:href,xlink:type
 export const isXlink = (name: string): boolean => {
   return name.charAt(5) === ':' && name.slice(0, 5) === 'xlink'
 }
 
+// 获取xlink:后面的属性名,如xlink:href => href
 export const getXlinkProp = (name: string): string => {
   return isXlink(name) ? name.slice(6, name.length) : ''
 }
 
+// 判断某个值是否为falsy值：null、undefined、false
 export const isFalsyAttrValue = (val: any): boolean => {
   return val == null || val === false
 }

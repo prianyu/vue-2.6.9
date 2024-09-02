@@ -6,6 +6,7 @@ import { remove, isDef } from "shared/util";
 // 这个模块用来处理组件和DOM节点上的ref属性
 // 在patch的时候，当解析到对应的节点，会在适当的时间点执行对应的钩子
 // 实现对ref的管理
+//----------钩子：create/update/destroy------------
 export default {
   // vnode创建，则将在$refs上添加元素
   create(_: any, vnode: VNodeWithData) {

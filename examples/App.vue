@@ -10,7 +10,9 @@
         <!-- HOC -->
         <!-- <HOC /> -->
         <!-- CSS scoped -->
-        <CssScope />
+        <!-- <CssScope /> -->
+        <!-- class合并 -->
+        <MergeClass />
     </div>
 </template>
 <script>
@@ -20,13 +22,15 @@ import StaticProps from './components/StaticProps.vue';
 import CustomSetterGetter from './components/CustomSetterGetter.vue';
 import HOC from './components/HOC.vue';
 import CssScope from './components/CssScope.vue';
+import MergeClass from './components/MergeClass.vue';
 export default {
     components: {
         TemplateRender, CustomRender,
         StaticProps,
         CustomSetterGetter,
         HOC,
-        CssScope
+        CssScope,
+        MergeClass
     },
 }
 </script>

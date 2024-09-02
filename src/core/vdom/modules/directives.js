@@ -7,6 +7,7 @@ import { mergeVNodeHook } from "core/vdom/helpers/index";
 // 规范化指令为 { name, rawName, def, modifiers }格式
 // 从$options.directives解析出定义的指令
 // 在适当时间点执行相关指令的钩子
+//------------钩子：create/update/destroy------------
 export default {
   create: updateDirectives,
   update: updateDirectives,

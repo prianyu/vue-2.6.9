@@ -7,25 +7,37 @@ import { isDef, isObject } from 'shared/util'
 // 会合并组件的class，会以当前节点所在的位置，分别往外和往内合并class
 // 最终将静态的class和动态的class拼接成字符串
 export function genClassForVnode (vnode: VNodeWithData): string {
-  let data = vnode.data
+  let data = vnode.data 
   let parentNode = vnode
   let childNode = vnode
-  while (isDef(childNode.componentInstance)) { // 从外往里找，拼接class
+  // 从外往里找，查找子孙组件的class，合并拼接class
+  //  以
+  // BaseButton: { template: '<div class="base-button">BaseButton</div>' }
+  // Button: { template: '<BaseButton  class="button"/>' }
+  // Parent: { template: '<Button  class="parent"/>' }
+  // <Parent />
+  // 为例，渲染Parent组件时，patch阶段从BaseButton到Button最后才到Parent
+  // 此时就依次将button合并到base-button，得到"base-button button"，再合并parent，得到"base-button button parent"
+  //  debugger
+  while (isDef(childNode.componentInstance)) {
     childNode = childNode.componentInstance._vnode
     if (childNode && childNode.data) {
       data = mergeClassData(childNode.data, data)
     }
   }
-  while (isDef(parentNode = parentNode.parent)) { // 从里往外找，拼接class
+  // 从里往外找祖先元素的class，合并class
+  // @suspense
+  while (isDef(parentNode = parentNode.parent)) {
     if (parentNode && parentNode.data) {
       data = mergeClassData(data, parentNode.data)
     }
   }
+  // 合并静态样式类和动态样式类
   return renderClass(data.staticClass, data.class)
 }
 
 
-// 分别合并staticClass和class
+// 分别合并staticClass和class并返回
 function mergeClassData (child: VNodeData, parent: VNodeData): {
   staticClass: string,
   class: any
@@ -56,6 +68,8 @@ export function concat (a: ?string, b: ?string): string {
 }
 
 // 格式化class，将动态的class转化为字符串
+// 处理字符串类型、对象类型和数组类型
+// 最终转为字符串
 export function stringifyClass (value: any): string {
   if (Array.isArray(value)) { // 数组格式的
     return stringifyArray(value)
@@ -84,6 +98,7 @@ function stringifyArray (value: Array<any>): string {
 }
 
 // 将对象格式的class转为字符串
+// 如果对象的值为真就将key作为样式名拼接
 function stringifyObject (value: Object): string {
   let res = ''
   for (const key in value) {

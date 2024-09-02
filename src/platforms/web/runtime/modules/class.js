@@ -11,11 +11,17 @@ import {
   genClassForVnode
 } from 'web/util/index'
 
+// 处理class
+// --------------钩子：create/update------------
+
+// 对比新老节点更新class到真实DOM上面
+// 1. 新老接待你都没有class属性，则不处理
+// 2. 
 function updateClass (oldVnode: any, vnode: any) {
   const el = vnode.elm
   const data: VNodeData = vnode.data
   const oldData: VNodeData = oldVnode.data
-  // 没有class
+  // 新老节点都没有class
   if (
     isUndef(data.staticClass) &&
     isUndef(data.class) && (
