@@ -36,7 +36,7 @@ function updateDOMProps (oldVnode: VNodeWithData, vnode: VNodeWithData) {
     // as these will throw away existing DOM nodes and cause removal errors
     // on subsequent patches (#3360)
     // 处理textContent/innerHTML的边界条件
-    // 如果标签上有v-html属性了，则忽略其子节点，避免后续更新时出错
+    // 当元素的domProps上有textContent或innerHTML属性，则忽略其子节点，避免后续更新时出错
     if (key === 'textContent' || key === 'innerHTML') {
       if (vnode.children) vnode.children.length = 0
       if (cur === oldProps[key]) continue

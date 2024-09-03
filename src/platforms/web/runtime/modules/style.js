@@ -18,8 +18,8 @@ const setProp = (el, name, val) => {
   } else if (importantRE.test(val)) { // 含!important的样式设置
     el.style.setProperty(hyphenate(name), val.replace(importantRE, ''), 'important')
   } else {
-    const normalizedName = normalize(name) // 属性名规范化
-    if (Array.isArray(val)) {
+    const normalizedName = normalize(name) // 属性名规范化，浏览器CSS属性兼容给处理
+    if (Array.isArray(val)) { // autoprefixer的样式数组支持
       // Support values array created by autoprefixer, e.g.
       // {display: ["-webkit-box", "-ms-flexbox", "flex"]}
       // Set them one by one, and the browser will only set those it can recognize
@@ -38,13 +38,17 @@ const vendorNames = ['Webkit', 'Moz', 'ms']
 
 let emptyStyle
 // 将CSS属性名规范化
+// 返回浏览器支持的属性名
 const normalize = cached(function (prop) {
-  emptyStyle = emptyStyle || document.createElement('div').style
-  prop = camelize(prop)
+  emptyStyle = emptyStyle || document.createElement('div').style // 创建样式对象
+  prop = camelize(prop) // 将样式转为驼峰命名
+  // 如果样式中存在该属性则说明当前浏览器支持该属性名，不处理
   if (prop !== 'filter' && (prop in emptyStyle)) {
     return prop
   }
-  const capName = prop.charAt(0).toUpperCase() + prop.slice(1)
+  // 走到这里说明浏览器不支持当前CSS属性，则拼接浏览器前缀后再判断
+  const capName = prop.charAt(0).toUpperCase() + prop.slice(1) // 转为大驼峰命名用于拼接浏览器前缀
+  // 遍历浏览器前缀，判断是否支持，如果支持则返回
   for (let i = 0; i < vendorNames.length; i++) {
     const name = vendorNames[i] + capName
     if (name in emptyStyle) {

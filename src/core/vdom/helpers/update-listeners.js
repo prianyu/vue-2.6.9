@@ -75,7 +75,8 @@ export function updateListeners (
   vm: Component // 当前正在处理的组件实例
 ) {
   let name, def, cur, old, event
-  for (name in on) { // 遍历新的事件列表
+  // 遍历新的事件列表
+  for (name in on) { 
     def = cur = on[name] // 可以是falsy|function|array<function>
     old = oldOn[name] // 旧的同名事件列表
     event = normalizeEvent(name) // 解析事件名和事件修饰符等信息
@@ -92,7 +93,7 @@ export function updateListeners (
     } else if (isUndef(old)) { // 如果没有对应的旧的事件
       if (isUndef(cur.fns)) { 
         // 还未创建事件调用者，会对当前的事件创建一个调用者
-        // 调用者就是对回调函数进行了一个包装，将回调函数绑定在起fns属性上
+        // 调用者就是对回调函数进行了一个包装，将回调函数绑定在其fns属性上
         // 调用者内部则会获取这个fns执行，并捕获错误
         // 这是因为，回调函数是外部定义的，为了避免意外发生，所以需要捕获错误
         cur = on[name] = createFnInvoker(cur, vm)

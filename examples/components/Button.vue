@@ -10,3 +10,10 @@ export default {
 }
 
 </script>
+<style scoped>
+.button {
+    font-size: 20px;
+    color: purple;
+}
+
+</style>

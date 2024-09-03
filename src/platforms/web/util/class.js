@@ -26,7 +26,11 @@ export function genClassForVnode (vnode: VNodeWithData): string {
     }
   }
   // 从里往外找祖先元素的class，合并class
-  // @suspense
+  // 该逻辑通常在组件更新时起作用
+  // 通常在嵌套的组件中，通过上方的循环逻辑渲染一个组件时，已经得到了最终正确的的class
+  // 但每个组件内部也是可以更新状态的，如上方例子的<base-button>，当其内部的状态发生变化时，就会触发组件重新更新
+  // 由于vue是局部更新的，所以内部只会触发<base-button>的patch，如果不增加这个逻辑，那么其最终的样式就无法得到"base-button button parent"
+  // 只有base-button
   while (isDef(parentNode = parentNode.parent)) {
     if (parentNode && parentNode.data) {
       data = mergeClassData(data, parentNode.data)

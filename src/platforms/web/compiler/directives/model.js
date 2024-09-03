@@ -8,6 +8,8 @@ let warn
 
 // in some cases, the event used has to be determined at runtime
 // so we used some reserved tokens during compile.
+// 定义一些事件常量保留标记，用于在编译期间表示某些事件类型
+// 这些事件类型将在运行时根据具体情况进行替换
 export const RANGE_TOKEN = '__r'
 export const CHECKBOX_RADIO_TOKEN = '__c'
 

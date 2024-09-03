@@ -9,3 +9,9 @@ export default {
     }
 }
 </script>
+<style scoped>
+.btn {
+    font-weight: 700;
+}
+
+</style>
