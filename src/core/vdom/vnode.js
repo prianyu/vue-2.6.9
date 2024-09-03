@@ -16,7 +16,7 @@ export default class VNode {
   // strictly internal
   raw: boolean; // contains raw HTML? (server only)
   isStatic: boolean; // hoisted static node 静态节点
-  isRootInsert: boolean; // necessary for enter transition check
+  isRootInsert: boolean; // necessary for enter transition check是否作为组件的根组件，在处理transition组件盘判断是否是首次进入
   isComment: boolean; // 是否为空白占位节点（注释节点）
   isCloned: boolean; // 是否是克隆而来的节点
   isOnce: boolean; // 是否为一个v-once节点

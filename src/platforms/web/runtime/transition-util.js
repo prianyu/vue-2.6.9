@@ -4,26 +4,28 @@ import { inBrowser, isIE9 } from 'core/util/index'
 import { addClass, removeClass } from './class-util'
 import { remove, extend, cached } from 'shared/util'
 
-// 解析transition
+// 根据vnode.data.transition中的信息解析transition
 // 得到transition各种状态的CSS名称以及事件回调等信息
 export function resolveTransition (def?: string | Object): ?Object {
   if (!def) {
     return
   }
   /* istanbul ignore else */
+  // transition配置定义是个对象
   if (typeof def === 'object') {
     const res = {}
-    if (def.css !== false) {
+    if (def.css !== false) { // 使用CSS过渡
+      // 通过name属性获取样式类后合并到对象中
       extend(res, autoCssTransition(def.name || 'v'))
     }
     extend(res, def)
     return res
-  } else if (typeof def === 'string') {
+  } else if (typeof def === 'string') { // 字符串则返回样式类名称的对象
     return autoCssTransition(def)
   }
 }
 
-// 获取中状态的CSS名称
+// 根据name获取中状态的CSS名称
 const autoCssTransition: (name: string) => Object = cached(name => {
   return {
     enterClass: `${name}-enter`,
@@ -35,10 +37,10 @@ const autoCssTransition: (name: string) => Object = cached(name => {
   }
 })
 
-export const hasTransition = inBrowser && !isIE9
+export const hasTransition = inBrowser && !isIE9 // 是否支持css transition
+// 过渡事件类型
 const TRANSITION = 'transition'
-const ANIMATION = 'animation'
-
+const ANIMATION = 'animation' 
 // Transition property/event sniffing
 // 对transition和animation属性及其事件名的嗅探
 export let transitionProp = 'transition'
@@ -62,13 +64,14 @@ if (hasTransition) {
 }
 
 // binding to window is necessary to make hot reload work in IE in strict mode
-// 动画的api名称
+// 动画的api名称，优先使用requestAnimationFrame
 const raf = inBrowser
   ? window.requestAnimationFrame
     ? window.requestAnimationFrame.bind(window)
     : setTimeout
   : /* istanbul ignore next */ fn => fn()
 
+// 下一帧动画
 export function nextFrame (fn: Function) {
   raf(() => {
     raf(fn)
@@ -80,7 +83,7 @@ export function addTransitionClass (el: any, cls: string) {
   const transitionClasses = el._transitionClasses || (el._transitionClasses = [])
   if (transitionClasses.indexOf(cls) < 0) {
     transitionClasses.push(cls)
-    addClass(el, cls) // 添加对应的类名
+    addClass(el, cls) // 给元素添加对应的类名
   }
 }
 
@@ -97,23 +100,29 @@ export function whenTransitionEnds (
   expectedType: ?string,
   cb: Function
 ) {
-  // 获取动画的信息{动画类型，timeout，需要执行动画的属性的个数}
+  // 获取动画的信息{动画类型，执行时长，需要执行动画的属性的个数}
   const { type, timeout, propCount } = getTransitionInfo(el, expectedType)
   if (!type) return cb()
   const event: string = type === TRANSITION ? transitionEndEvent : animationEndEvent // 动画结束事件名
   let ended = 0
+
+  // 动画或过渡结束的回调
+  // 结束后执行回调并移除事件监听
   const end = () => {
     el.removeEventListener(event, onEnd)
     cb()
   }
   const onEnd = e => {
-    if (e.target === el) {
-      if (++ended >= propCount) {
+    if (e.target === el) { // 确保事件是在目标元素中触发
+      if (++ended >= propCount) { // 运行完毕则执行回调
         end()
       }
     }
   }
+  // 超时兜底，防止由于某些情况下未触发transitionend或animationend事件
+  // 导致的回到不被调用的问题
   setTimeout(() => {
+    // 超时了动画执行的个数小于应执行个数
     if (ended < propCount) {
       end()
     }
@@ -121,15 +130,18 @@ export function whenTransitionEnds (
   el.addEventListener(event, onEnd) // 添加事件回调
 }
 
-const transformRE = /\b(transform|all)(,|$)/
+const transformRE = /\b(transform|all)(,|$)/ // transition property中transform属性的匹配
 
-// 获取动画的各种信息
+// 获取过渡或动画的相关信息
 export function getTransitionInfo (el: Element, expectedType?: ?string): {
   type: ?string;
   propCount: number;
   timeout: number;
   hasTransform: boolean;
 } {
+
+  // 获取transition和animation所有属性的delay和duration
+  // 并计算动画的最长时长
   const styles: any = window.getComputedStyle(el) // 获取所有的样式
   // JSDOM may return undefined for transition properties
   const transitionDelays: Array<string> = (styles[transitionProp + 'Delay'] || '').split(', ') // transition delay
@@ -138,30 +150,29 @@ export function getTransitionInfo (el: Element, expectedType?: ?string): {
   const animationDelays: Array<string> = (styles[animationProp + 'Delay'] || '').split(', ') // animation delay
   const animationDurations: Array<string> = (styles[animationProp + 'Duration'] || '').split(', ') // animation duration
   const animationTimeout: number = getTimeout(animationDelays, animationDurations)
-  debugger
 
   let type: ?string
   let timeout = 0
   let propCount = 0
   /* istanbul ignore if */
-  if (expectedType === TRANSITION) {
+  if (expectedType === TRANSITION) {// transition类型
     if (transitionTimeout > 0) {
       type = TRANSITION
       timeout = transitionTimeout
       propCount = transitionDurations.length
     }
-  } else if (expectedType === ANIMATION) {
+  } else if (expectedType === ANIMATION) { // animation类型
     if (animationTimeout > 0) {
       type = ANIMATION
       timeout = animationTimeout
       propCount = animationDurations.length
     }
-  } else {
-    timeout = Math.max(transitionTimeout, animationTimeout)
+  } else { // 同时存在
+    timeout = Math.max(transitionTimeout, animationTimeout) // 取较大的时长
     type = timeout > 0
       ? transitionTimeout > animationTimeout
         ? TRANSITION
-        : ANIMATION
+        : ANIMATION // 取较大时长的类型
       : null
     propCount = type
       ? type === TRANSITION
@@ -169,6 +180,7 @@ export function getTransitionInfo (el: Element, expectedType?: ?string): {
         : animationDurations.length
       : 0
   }
+  // 是否是transition类型且有transform属性过渡
   const hasTransform: boolean =
     type === TRANSITION &&
     transformRE.test(styles[transitionProp + 'Property'])
@@ -179,14 +191,16 @@ export function getTransitionInfo (el: Element, expectedType?: ?string): {
     hasTransform // 是否有transform
   }
 }
-
+// 计算所有的duration和delay值的最长时间
 function getTimeout (delays: Array<string>, durations: Array<string>): number {
   /* istanbul ignore next */
 
+  // 确保数组长度一致
   while (delays.length < durations.length) {
     delays = delays.concat(delays)
   }
 
+  // 返回所有的duration+delay值的最长时间
   return Math.max.apply(null, durations.map((d, i) => {
     return toMs(d) + toMs(delays[i])
   }))
