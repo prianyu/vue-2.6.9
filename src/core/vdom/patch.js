@@ -223,10 +223,10 @@ export function createPatchFunction(backend) {
           // 创建了未知的html元素
           warn(
             "Unknown custom element: <" +
-              tag +
-              "> - did you " +
-              "register the component correctly? For recursive components, " +
-              'make sure to provide the "name" option.',
+            tag +
+            "> - did you " +
+            "register the component correctly? For recursive components, " +
+            'make sure to provide the "name" option.',
             vnode.context
           );
         }
@@ -445,7 +445,7 @@ export function createPatchFunction(backend) {
 
   // 是否可patch的节点
   // 找到最深层的_vnode节点，返回其tag值
-  // 这种情况下找到最深层的的组件
+  // 可patch的条件是：渲染节点不是纯文本、注释节点且有实际的渲染内容
   function isPatchable(vnode) {
     while (vnode.componentInstance) {
       vnode = vnode.componentInstance._vnode;
@@ -505,7 +505,7 @@ export function createPatchFunction(backend) {
       nodeOps.setStyleScope(vnode.elm, i);
     }
   }
-  // 从vnodes中截取节点并创建添加至所在的DOM节点中
+  // 从vnodes中截取节点并创建DOM添加至所在的父DOM节点中
   function addVnodes(
     parentElm,
     refElm,
@@ -616,7 +616,7 @@ export function createPatchFunction(backend) {
    * @param {*} oldCh 老的子元素列表
    * @param {*} newCh  新的子元素列表
    * @param {*} insertedVnodeQueue
-   * @param {*} removeOnly 特殊标识
+   * @param {*} removeOnly transition-group组件专用的特殊标识
    * Diff的过程如下：
    * 1. 分别为oldCh和newCh各初始化两个头尾指针
    * 2. 遍历新老节点列表，各自的头尾指针分别向中间靠拢，不断的比较新老节点，直到其中一个遍历结束，边Diff边为DOM做补丁
@@ -657,8 +657,8 @@ export function createPatchFunction(backend) {
     // removeOnly is a special flag used only by <transition-group>
     // to ensure removed elements stay in correct relative positions
     // during leaving transitions
-    // /removeOnly是一个特殊标志，仅由＜transition group＞使用，
-    // 以确保在离开过渡期间被移除的元素保持在正确的相对位置
+    // removeOnly是一个特殊标志，仅在＜transition group＞使用，
+    // 用于确保在离开过渡期间被移除的元素保持在正确的相对位置
     const canMove = !removeOnly;
 
     // 检查新子节点列表是否有重复的key
@@ -667,6 +667,7 @@ export function createPatchFunction(backend) {
     }
 
     // 开始进行DOM Diff
+    // 从头尾指针往中间循环对比，直到新列表中的其中一个对比结束
     while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
       if (isUndef(oldStartVnode)) {
         // 当前位置的节点被移走了，直接跳过
@@ -747,8 +748,8 @@ export function createPatchFunction(backend) {
         idxInOld = isDef(newStartVnode.key) // 新的开始节点有key
           ? oldKeyToIdx[newStartVnode.key] // 取该key在旧节点中的index
           : // 新节点没有key，那么就从旧节点中剩余的子节点找到相同的节点
-            // 由于这里又会对旧节点进行一次遍历和比较，因此，使用key是可以提高性能的，可以避免这个遍历
-            findIdxInOld(newStartVnode, oldCh, oldStartIdx, oldEndIdx);
+          // 由于这里又会对旧节点进行一次遍历和比较，因此，使用key是可以提高性能的，可以避免这个遍历
+          findIdxInOld(newStartVnode, oldCh, oldStartIdx, oldEndIdx);
 
         // 找不到旧的相同的元素，那么就当当前比较的新节点是个新元素
         if (isUndef(idxInOld)) {
@@ -853,7 +854,20 @@ export function createPatchFunction(backend) {
   }
 
   /**
-   * diff算法
+   * 新老节点diff
+   * 1. 两节点相同，不做处理
+   * 2. 复用静态数的元素
+   * 3. 执行vnode的prepare钩子
+   * 4. 执行vnode的update钩子
+   * 5. 如果新节点是文本节点且于旧节点的文本不相同，则更新文本
+   * 6. 如果新节点是元素节点：
+   *    6.1 如果新老节点都有children且两节点不相同，则对其进行diff
+   *    6.2 否则如果只有新的节点有children：
+   *      6.2.1 检查列表中是否有重复的key
+   *      6.2.2 如果旧节点是文本节点则清空文本节点
+   *      6.2.3 创建并插入新的子节点列表
+   *    6.3 否则如果只有旧的节点有children，则移除DOM上面的所有子节点
+   *    6.4 否则如果旧节点是文本节点，则清空文本节点
    */
   function patchVnode(
     oldVnode, // 老节点
@@ -863,12 +877,13 @@ export function createPatchFunction(backend) {
     index, // vnode在ownerArray中的索引
     removeOnly // 特殊的标识，仅transition有用
   ) {
+    // 新旧节点是同一个节点，无需比对
     if (oldVnode === vnode) {
-      // 新旧节点是同一个节点，无需比对
       return;
     }
 
     // @suspense
+    // 如果新的VNode已经存在DOM元素且包含在重用数组中，将其克隆
     if (isDef(vnode.elm) && isDef(ownerArray)) {
       // clone reused vnode
       vnode = ownerArray[index] = cloneVNode(vnode);
@@ -891,7 +906,7 @@ export function createPatchFunction(backend) {
     // note we only do this if the vnode is cloned -
     // if the new node is not cloned it means the render functions have been
     // reset by the hot-reload-api and we need to do a proper re-render.
-    // 复用组件
+    // 复用静态树的元素
     // 新老节点都是静态节点、key相同、vnode是clone得到的或者vnode是v-once节点
     if (
       isTrue(vnode.isStatic) && // 新老节点都是静态节点
@@ -917,8 +932,8 @@ export function createPatchFunction(backend) {
       for (i = 0; i < cbs.update.length; ++i) cbs.update[i](oldVnode, vnode);
       if (isDef((i = data.hook)) && isDef((i = i.update))) i(oldVnode, vnode);
     }
+    // 新节点不是文本节点
     if (isUndef(vnode.text)) {
-      // 新节点不是文本
       if (isDef(oldCh) && isDef(ch)) {
         // 新老节点都有子节点，则进行diff
         // 此处为Diff算法的核心
@@ -933,14 +948,14 @@ export function createPatchFunction(backend) {
         if (isDef(oldVnode.text)) nodeOps.setTextContent(elm, ""); // 如果老节点是个文本节点，则将内容置空
         addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue); // 创建新的子节点列表
       } else if (isDef(oldCh)) {
-        // 新节点没有子节点，老节点有子节点
+        // 新节点没有子节点，老节点有子节点（新节点是空节点）
         removeVnodes(elm, oldCh, 0, oldCh.length - 1); // 移除DOM上的子节点
       } else if (isDef(oldVnode.text)) {
-        // 新老节点都没有子节点且老节点是文本节点
+        // 新老节点都没有子节点且老节点是文本节点（新节点是空节点）
         nodeOps.setTextContent(elm, ""); // 将文本置空
       }
-    } else if (oldVnode.text !== vnode.text) {
-      // 新老节点都是文本节点，则更新文本内容
+    } else if (oldVnode.text !== vnode.text) { // 新节点是文本节点且不是空节点
+      // 新老节文本不一致则则更新文本内容
       nodeOps.setTextContent(elm, vnode.text);
     }
     // patch完毕，执行postpatch钩子
@@ -1101,7 +1116,7 @@ export function createPatchFunction(backend) {
         vnode.tag.indexOf("vue-component") === 0 ||
         (!isUnknownElement(vnode, inVPre) &&
           vnode.tag.toLowerCase() ===
-            (node.tagName && node.tagName.toLowerCase()))
+          (node.tagName && node.tagName.toLowerCase()))
       );
     } else {
       return node.nodeType === (vnode.isComment ? 8 : 3);
@@ -1132,7 +1147,7 @@ export function createPatchFunction(backend) {
     }
 
     let isInitialPatch = false; // 是否为初次patch，初次patch的子组件执行insert钩子时需要延迟到其被真实插入到DOM树中
-    const insertedVnodeQueue = []; // 用于收集插入的虚拟节点，以便后续调用挂载的钩子
+    const insertedVnodeQueue = []; // 用于收集插入的虚拟节点，在插入节点之后调用
 
     if (isUndef(oldVnode)) {
       // 有新节点，没有老节点
@@ -1178,10 +1193,10 @@ export function createPatchFunction(backend) {
             } else if (process.env.NODE_ENV !== "production") {
               warn(
                 "The client-side rendered virtual DOM tree is not matching " +
-                  "server-rendered content. This is likely caused by incorrect " +
-                  "HTML markup, for example nesting block-level elements inside " +
-                  "<p>, or missing <tbody>. Bailing hydration and performing " +
-                  "full client-side render."
+                "server-rendered content. This is likely caused by incorrect " +
+                "HTML markup, for example nesting block-level elements inside " +
+                "<p>, or missing <tbody>. Bailing hydration and performing " +
+                "full client-side render."
               );
             }
           }
@@ -1216,6 +1231,7 @@ export function createPatchFunction(backend) {
 
         // update parent placeholder node element, recursively
         // 如果根节点被替换（如v-if），递归遍历更新父级占位节点
+        //@suspense
         if (isDef(vnode.parent)) {
           let ancestor = vnode.parent;
           const patchable = isPatchable(vnode);
