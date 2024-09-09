@@ -13,7 +13,7 @@ src
 ├── shared          # 共享代码
 ```
 ## 主流程
-### （1）实例化阶段
+### （一）实例化阶段
 
 1. Vue实例化，会执行`vm._init`方法，会添加`_uid`,`_isVue`,`_self`,`_renderProxy`等属性
 2. 进行选项合并，合并过程中会按照子组件合和非子组件做不同的合并策略，得到`vm.$options`属性，合并后的选项具有`components`、`directives`、`filters`、`render`、`_base`等属性
@@ -27,7 +27,7 @@ src
 10. 执行`created`生命周期，到这一步，基本数据已经都初始化完毕了
 11. 判断是否传了`el`，是的话则执行`$mount(el)`，进入挂载阶段；否则等待手动挂载，手动挂载后也会进入挂载阶段
  
-### （2）挂载阶段
+### （二）挂载阶段
 
 1. 判断是否有**render函数**，如果没有则进入8，否则进入2
 2. 添加`vm.$el`属性存储挂载元素，执行`beforeMount`生命周期
@@ -41,7 +41,7 @@ src
 9. 将模板进行解析并生成render函数
 10. 进入2
 
-### （3）更新阶段
+### （三）更新阶段
 
 1. 触发`setter`，通知依赖更新更新
 2. 将watchers添加到异步更新队列中，等待执行更新
@@ -141,35 +141,35 @@ src
 ## 二、Vue实例化
 
 执行`this._init(options)`后
-+ 打上_uid,_self,_isVue等属性
++ 添加`_uid`,`_self`,`_isVue`等属性
 + 选项合并
-  - 据当options._isComonent属性判断是否为子组件（内部创建）
-  - 子组件调用[initInternalComponent(vm, options)](#initinternalcomponent函数)做选项合并，合并后的options会有_parentNode、_parentListeners、propDatas等属性
+  - 据当`options._isComponent`属性判断是否为子组件（内部创建）
+  - 子组件调用[initInternalComponent(vm, options)](#initinternalcomponent函数)做选项合并，合并后的`option`s会有`_parentNode`、`_parentListeners`、`propsData`等属性
   - 非子组件调用[mergeOptions(resolveConstructorOptions(vm.constructor),options || {},vm)](#mergeoptions函数)做合并
-+ initLifecycle(vm)：初始化$parent和$children并绑定父子关系，初始化$refs,$root,_watcher,_inactive,_isMounted,_isDestroyed,_isBeingDestroyed,_directInactive等属性
-+ initEvents(vm)：初始化_events,_hasHookEvent等属性，更新$options._parentListeners
-+ initRender(vm)：初始化_vnode,$vnode,$slots,$scopedSlots,$createElement,_c以及响应式的$listeners,$attrs等属性
-+ callHook(vm, 'beforeCreate')：执行beforeCreate钩子
-+ initInjections(vm) // 在data和props前处理inject，会逐级遍历父元素获取对应inject并注入，inject是响应式的，但是不可被修改
-+ initState(vm)：依次处理props、methods、data、computed、watch
-  - 实例增加_watchers对象属性
-  - 将传入的props赋值给_props属性，将props转为响应式的，并将vm上对应的属性代理至vm._props，props不可直接修改
-  - 将methods传入的方法挂在vm上，并将this绑定在vm上
-  - 将传入的data赋值给_data属性，并将vm上对应的属性代理至vm._data，调用observe函数，将data转为可观测对象
-  - 初始化computed：实例新增计算属性观察者_computedWatchers，将computed转为可观测且具备缓存能力的响应式对象
-  - 初始化watch：遍历watcher，规范化参数后调用vm.$watch
-+ initProvide(vm) ：在data和props处理后处理provide，provide可以为函数可以为对象，默认provide是非响应式的（除非传入的provide本身是响应式）
-+ callHook(vm, 'created')：执行created钩子
-+ 如果传入了el，则调用$mount进行挂载，进入挂载阶段
-  - 调用mountComponent函数
++ `initLifecycle(vm)`：初始化`$parent`和`$children`并绑定父子关系，初始化`$refs`,`$root`,`_watcher`,`_inactive`,`_isMounted`,`_isDestroyed`,`_isBeingDestroyed`,`_directInactive`等属性
++ `initEvents(vm)`：初始化`_events`,`_hasHookEvent`等属性，更新`$options._parentListeners`
++ `initRender(vm)`：初始化`_vnode`,`$vnode`,`$slots`,`$scopedSlots`,`$createElement`,`_c`以及响应式的`$listeners`,`$attrs`等属性
++ `callHook(vm, 'beforeCreate')`：执行beforeCreate钩子
++ `initInjections(vm)`： 在`data`和`props`前处理`inject`，会逐级遍历祖先元素的`_provided`属性获取对应`inject`并注入，`inject`不可被修改
++ `initState(vm)`：依次处理`props`、`methods`、`data`、`computed`、`watch`选项
+  - 实例增加`_watchers`对象属性，用于存放所有的观察者
+  - 将传入的`props`赋值给`_props`属性，将`props`转为响应式的，并将vm上对应的属性代理至`vm._props`，`props`不可直接修改
+  - 将`methods`传入的方法挂在`vm`上，绑定在vm上作为上下文
+  - 将传入的`data`赋值给`_data`属性，并将`vm`上对应的属性代理至`vm._data`，调用`observe`函数，将`data`转为可观测对象
+  - 初始化`computed`：实例新增计算属性观察者`_computedWatchers`，将`computed`转为可观测且具备缓存能力的响应式对象
+  - 初始化`watch`：遍历`watch`选项，规范化参数后调用`vm.$watch`
++ `initProvide(vm) `：在`data`和`props`处理后处理`provide`，`provide`可以为函数可以为对象，默认`provide`是非响应式的（除非传入的`provide`本身是响应式）
++` callHook(vm, 'created')`：执行`created`钩子
++ 如果传入了`el`，则调用`vm.$mount`进行挂载，进入挂载阶段
+  - 调用`mountComponent`函数开始挂载
 
-### （1） 选项合并与规范化
+### （一） 选项合并与规范化
 
 > 文件位置：[src/core/util/options.js](./src/core/util/options.js)
 
 会根据实例上是否有options._isComponent属性选择不同的合并策略来进行合并。当_isComponent为true时代表的是子组件，会选择`initInternalComponent`进行选项合并，否则使用`mergeOptions`来合并。
 > _isComponent是在渲染阶段解析到子组件时内部实例化组件添加的一个属性。由于选项合并是比较耗时的，所以对于内部的创建的组件，做了特别的合并处理，这样可以提高选项合并的性能
-**1. mergeOptions函数**
+#### 1. mergeOptions函数
 参数: (parent,child,vm)
 
 选项合并的工具函数，专门用于合并Vue实例选项，如props、inject、directives等。
@@ -274,7 +274,7 @@ src
   - directives,components,filters：构造函数、实例、父选项进行三方合并
   - 生命周期钩子：合并成数组并去重
 
-**2. initInternalComponent函数**
+#### 2. initInternalComponent函数
 参数: (vm, options)
 
 + 将vm.$options的原型指向options
@@ -289,7 +289,7 @@ src
   ```
 + 合并render方法和staticRenderFn方法
 
-### （2）initLifecycle
+### （二）initLifecycle
 
 > 文件位置：[src/core/instance/lifecycle.js](./src/core/instance/lifecycle.js)
 
@@ -299,7 +299,7 @@ src
 + 增加$refs属性
 + 增加_watcher（存放渲染Watcher）、_inactive（组件是否处于keepAlive）、_directInactive、_isMounted（是否已挂载）、_isDestroyed（是否已销毁）、_isBeingDestroyed（标记组件是否出于正在销毁的阶段）等属性
 
-### （3）initEvents
+### （三）initEvents
 > 文件位置：[src/core/instance/events.js](./src/core/instance/lifecycle.js)
 
 与事件相关的属性的初始化：
@@ -308,7 +308,7 @@ src
 
 > 创建的调用者在下次更新事件时，如果同一个事件已经创建过调用者了，则只更新新事件的引用；旧事件如果再更新时已经不存在了，则会卸载掉旧事件
 
-### （4）initRender
+### （四）initRender
 > 文件位置：[src/core/instance/render.js](./src/core/instance/lifecycle.js)
 
 初始化与渲染相关的一些属性和方法：
@@ -360,7 +360,7 @@ vm.$slots = {
 }
 ```
 
-### （4）initInjections
+### （五）initInjections
 > 文件位置：[src/core/instance/inject.js](./src/core/instance/lifecycle.js)
 
 初始化实例的inject：
@@ -369,7 +369,7 @@ vm.$slots = {
 + 最终会是defineReactive将找到的provide定义在vm实例上
 + inject是由祖先提供的，所以在子组件不应该直接修改，因为其修改在祖先元素重新渲染后会被覆盖
   
-### （6）initState
+### （六）initState
 > 文件位置：[src/core/instance/state.js](./src/core/instance/lifecycle.js)
 
 + 添加vm._watchers属性，用于存放所有的观察者
@@ -430,7 +430,7 @@ vm.$slots = {
 + $watch最终会调用`new Watcher(...)`创建用户watcher，如果是立即执行的则会立即执行回调
 + 创建后会返回一个取消检测的方法unwatchFn，用于取消监测
 
-### （7）initProvide
+### （七）initProvide
 > 文件位置：[src/core/instance/inject.js](./src/core/instance/lifecycle.js)
 处理$options.provide：
 + 会根据provide为函数获取provide值
@@ -450,7 +450,7 @@ vm.$slots = {
   - watcher在初始化和数据变化时会执行回调函数
 + 将组件标记为已挂在（vm._isMounted=true），并执行mounted钩子
 
-### 1. prototype._render
+### （一）. prototype._render
 
 作用：将组件实例渲染成一个VNode
 
@@ -501,6 +501,8 @@ vm = {
   }
 }
 ```
+
+### （二）vm._update
 
 
 
