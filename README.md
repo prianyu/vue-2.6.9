@@ -1,5 +1,7 @@
 
-打包入口：src/platform/web/entry-runtime-with-compiler.js
+# Vue源码逐行解读
+
+打包入口：**src/platform/web/entry-runtime-with-compiler.js**
 
 ```shell
 src
@@ -12,6 +14,7 @@ src
 ```
 ## 主流程
 ### （1）实例化阶段
+
 1. Vue实例化，会执行`vm._init`方法，会添加`_uid`,`_isVue`,`_self`,`_renderProxy`等属性
 2. 进行选项合并，合并过程中会按照子组件合和非子组件做不同的合并策略，得到`vm.$options`属性，合并后的选项具有`components`、`directives`、`filters`、`render`、`_base`等属性
 3. 执行`initLifecycle(vm)`，初始化一些与组件生命周期相关的属性和方法，如`$parent`,`$children`,`$root`,`$refs`,`_watcher`,`_inactive`,`_isMounted`,`_isDestroyed`,`_isBeingDestroyed`等
@@ -48,127 +51,92 @@ src
 6. 执行`keep-alive`组件包裹的`activated`钩子
 7. 执行`updated`钩子
                   
-## 一、Vue定义
-### （1） prototype
+## 一、Vue构造函数的定义
+### 1. prototype上的属性和方法
 
-**1. 执行各个初始化方法，在原型上添加各类属性和方法**
+**（1）执行各个初始化方法，在原型上添加各类属性和方法**
+
 > 文件位置：[./src/core/instance/index.js](./src/core/instance/index.js)
 
-+ initMixin(Vue) ：往原型新增_init方法，用于整个Vue实例的实例化
-+ stateMixin(Vue) ：往原型增加 $data,$props属性，其中$data会代理至vm._data，$props会代理至vm._props；新增$watch,$delete,$set方法，$watch执行后返回一个取消watch的方法
-+ eventsMixin(Vue) ：往原型增加$on,$once,$off,$emit等与事件相关的方法。使用$on绑定的事件会存储在_events中，如果事件名是`hook:`开头，则会将`vm._hasHookEvent`标记为true，用于优化。其中$once只是对$on和$off的一个包装函数
-+ lifecycleMixin(Vue) ：往原型增加_update,$forceUpdate,$destroy三个方法，其中_update方法会调用—__patch__方法对新老DOM进行对比，最终生成真实DOM。$forceUpdate本质则是调用渲染Watcher的update方法，进行了一次强行的渲染
-+ renderMixin(Vue) ：往原型添加$nextTick,_render以及各类与渲染相关的辅助方法（如_s,_t,_o等），_render方法用于生成虚拟节点(VNode)
++ `initMixin(Vue)` ：往原型新增`_init`方法，用于整个Vue实例的实例化
++ `stateMixin(Vue)`：往原型增加`$data`, `$props`属性，其中`$data`会代理至`vm._data`，`$props`会代理至`vm._props`；新增`$watch`, `$delete`, `$set`方法
++ `eventsMixin(Vue)`：往原型增加`$on`, `$once`, `$off`, `$emit`等与事件相关的方法。使用$on绑定的事件会存储在`_events`中，如果事件名是`hook:`开头，则会将`vm._hasHookEvent`标记为`true`，用于优化。其中`$once`只是对`$on`和`$off`的一个包装函数
++ `lifecycleMixin(Vue)`：往原型增加`_update`, `$forceUpdate`, `$destroy`三个方法，其中`_update`方法会调用`__patch__`方法对新老DOM进行对比，最终生成真实DOM。`$forceUpdate`本质则是调用**渲染Watcher**的`update`方法，进行了一次强行的渲染
++ `renderMixin(Vue)`：往原型添加`$nextTick`, `_render`以及各类与渲染相关的**辅助方法**（如`_s`,`_t`,`_o`等），`_render`方法用于生成虚拟节点(VNode)
 
-**2. 添加与rumtime相关的属性和方法**
+**（2） 添加与runtime相关的属性和方法**
+
 >[./src/platforms/web/runtime/index.js](./src/platforms/web/runtime/index.js)
 
-+ 浏览器环境下会往原型添加__patch__方法，用于DOM Diff
-+ 增加web环境下的$mount方法，该方法可运行于服务端和客户端，客户端会对此方法进行重写，主要是增加compiler
++ 浏览器环境下会往原型添加`__patch__`方法，用于DOM Diff
++ 增加web环境下的`$mount`方法，该方法可运行于服务端和客户端，客户端会对此方法进行重写，主要是增加**compiler**
 
-**3. 重写with compiler下的$mount方法**
+**（3）重写with compiler下的$mount方法**
 
 > 文件位置：[./src/platforms/web/entry-runtime-with-compiler.js](./src/platforms/web/entry-runtime-with-compiler.js)
 
-+ 缓存原有的$mount
-+ 增加compiler模块，会根据传入的template或者el生成render函数
-+ 如果传入了template，若template是个节点或者以"#"开头的字符串，则会获取该节点，并以节点的innerHTML作为template，生成render函数
-+ 如果不传template但是传了el，则会以el的outerHTML作为template，并生成render函数
-+ 生成render函数后最终会调用缓存的$mount
++ 缓存原有的`$mount`
++ 增加compiler模块，会根据传入的`template`或者`el`选项生成**render函数**
++ 如果传入了`template`，若template是个节点或者以"#"开头的字符串，则会获取该节点，并以节点的innerHTML作为template，生成**render函数**
++ 如果不传`template`但是传了`el`，则会以el的`outerHTML`作为`template`，并生成**render函数**
++ 编译后的**render函数**和**staticRenderFns**会分别赋值给`options.render`和`options.staticRenderFns`
++ 最终会调用缓存的`$mount`
 
-### （2）全局和平台相关的静态属性和方法
+### 2. 静态属性和方法
 
-**1. 调用initGlobalAPI(Vue)，在Vue构造函数上增加全局的各种静态属性和方法。**
+**（1） 调用`initGlobalAPI(Vue)`，在Vue构造函数上增加全局的各种静态属性和方法。**
+
 > [./src/core/globala-api/index.js](./src/core/globala-api/index.js)
 
-+ delete,set,nextTick,observable等静态方法
-+ util静态属性（含warn,extend,mergeOptions,defineReactive等工具方法）
-+ options静态属性，含{directives,options,components,_base: Vue}，_base属性会被Vue.component方法引用
-+ 在options.components中增加内置组件keep-alive
-+ initUse(Vue)：新增use方法，用于插件安装
-+ initMixin(Vue)：新增mixin方法
-+ initExtend(Vue)：新增extend方法
-+ initAssetRegisters(Vue)：新增component,directive,filter方法
-+ version属性，标记Vue的版本
++ `delete`, `set`, `nextTick`, `observable`等静态方法
++ `util`静态属性（含`warn`, `extend`, `mergeOptions`, `defineReactive`等工具方法）
++ `options`静态属性，含{`directives` ,`options`, `components`, `_base` }，`_base`属性会被`Vue.component`方法引用
++ 在`options.components中`增加内置组件`keep-alive`
++ `initUse(Vue)`：新增`use`方法，用于插件安装
++ `initMixin(Vue)`：新增`mixin`方法，传入的选项与`Vue.options`进行合并
++ `initExtend(Vue)`：新增`extend`方法，用于创建子类
++ `initAssetRegisters(Vue)`：新增`component`,`directive`,`filter`静态方法
++ `version`属性，标记Vue的版本
 
-**2. 增加平台相关（runtime）的静态方法和属性**
+**`Vue.extend(extendOptions)`**
+
+用于创建**Vue子类**，得到**Sub构造函数**
+
++ 所有构造函数都会有一个`cid`标识，用于缓存，Vue构造函数为0，后续每继承一次`cid`的值会加1；这个`cid`会被用来作为构造器的缓存标识。同一个`extendOptions`是可以被用于创建不同的子类构造器的，每创建一个就会根据`cid`缓存至`extendOptions._Ctor[cid]`中
++ **Sub的原型**指向**Vue的原型**，构造函数指向Sub自身（原型继承）
++ 将`extendOptions`和父类的`options`合并得到`新的options`赋值给`Sub.options`
++ 添加`super`属性，指向`Super`
++ 如果`Sub.options`上有`props`和`computed`，在Sub的原型上代理`props`和`getters`，避免后续创建每个实例都调用`defineProperty`，提高性能
++ 将父类的静态方法`mixin`、`use`、`extend`赋给`Sub`，用于实现多重继承
++ 将父类的静态属性`directives`、`filters`、`components`赋给`Sub`
++ 如果有`name`属性，则会开启递归自查，将Sub存放进`Sub.components[name]`。这个是实现递归组件的基本原理，因此递归组件需要有name属性
++ 记录父类的`options（Sub.superOptions）`、当前`extendOptions`记录到`Sub.extendOptions`。会将`Sub.options`给“密封起来”赋值给`Sub.sealedOptions`，这是因为后续`Sub.options`在做选项合并时可能会发生改变，用于比对判断是否发生了改变，重新计算`Sub.extendOptions`
++ 缓存`Sub`至`extendOptions._Ctor[cid]`中并返回`Sub`
+
+**`Vue.component`、`Vue.directive`、`Vue.filter`**
+
+1. 三个方法均接收参数`(id, definition)`
+2. 如果不传`definition`，那么返回对应的资源，如`Vue.directive("focus")`会返回`Vue.options.directives['focus']`
+3. 对于`Vue.component`，如果`definition`没有name属性，则将id作为name属性
+4. 对于`Vue.directive`，`definition`最终都会转为`{ bind: definition, update: definition }`的格式
+5. 执行结果是往对应的资源存储定义：`Vue.options[type + 's'][id]` = `definition`
+
+**（2）增加平台相关（runtime）的静态方法和属性**
+
 >[./src/platforms/web/runtime/index.js](./src/platforms/web/runtime/index.js)
 
-+ Vue.config.mustUseProp：检测原生dom属性的方法，如selected等
-+ Vue.config.isReservedTag：判断是否为保留标签的方法（原生的html和svg相关的标签）
-+ Vue.config.isReservedAttr：判断是否为保留属性的方法（style，class）
-+ Vue.config.getTagNamespace：获取命名空间的方法（svg和mathML相关标签，分别返回svg和math)
-+ Vue.config.isUnknownElement：判断是否为无效的html标签，非浏览器下永远返回true
-+ 增加v-model、v-show指令和transition、transition-group组件
++ `Vue.config.mustUseProp`：检测原生dom属性的方法，如`selected`等
++ `Vue.config.isReservedTag`：判断是否为保留标签的方法（原生的`html`和`svg`相关的标签）
++ `Vue.config.isReservedAttr`：判断是否为保留属性的方法（`style`，`class`）
++ `Vue.config.getTagNamespace`：获取命名空间的方法（svg和mathML相关标签，分别返回svg和math)
++ `Vue.config.isUnknownElement`：判断是否为无效的html标签，非浏览器下永远返回true
++ 增加`v-model`、`v-show`指令合并至`Vue.options.directives`和`transition`、`transition-group`组件合并至`Vue.options.components`
   
-**3.增加compiler相关的静态方法**
+**（3）增加compiler相关的静态方法**
 
 > 文件位置：[./src/platforms/web/entry-runtime-with-compiler.js](./src/platforms/web/entry-runtime-with-compiler.js)
-+ 增加Vue.compile，用于将template转化为render函数
 
-1. 重写
-
-#### Vue.use(plugin)
-
-+ 内部会维护一个已安装的列表installedPlugins，避免重复安装
-+ 安装函数会优先取plugin.install，否则如果plugin为函数则直接取plugin
-+ 会将Vue作为一个参数传递给安装函数，这有利于维持Vue版本一致，也有利于避免多次引入Vue
-
-#### Vue.mixin(mixin)
-
-将mixin选项与Vue.options进行合并，支持链式调用
-
-#### Vue.extend(extendOptions)
-
-用于创建Vue子类，得到Sub构造函数
-
-+ 所有构造函数都会有一个cid标识，用于缓存，Vue构造函数为0，后续每继承一次cid的值会加1；这个cid会被用来作为构造器的缓存标识。同一个extendOptions是可以被用于创建不同的子类构造器的，每创建一个就会根据cid缓存至extendOptions._Ctor[cid]中
-+ Sub的原型指向Vue的原型，构造函数指向Sub自身（原型继承）
-+ 将extendOptions和父类的options合并得到新的options赋值给Sub.options
-+ 添加super属性，指向Super
-+ 如果Sub.options上有props和computed，在Sub的原型上代理props和getters，避免后续创建每个实例都调用defineProperty
-+ 将父类的静态方法mixin、use、extend赋给Sub，用于实现多重继承
-+ 将父类的静态属性directives、filters、components赋给Sub
-+ 如果有name属性，则会开启递归自查，将Sub存放进Sub.components[name]。这个是实现递归组件的基本原理，因此递归组件需要有name属性
-+ 记录父类的options（Sub.superOptions）、当前extendOptions记录到Sub.extendOptions。会将Sub.options给“密封起来”赋值给Sub.sealedOptions，这是因为后续Sub.options在做选项合并时可能会发生改变，用于比对判断是否发生了改变，重新计算Sub.extendOptions
-+ 缓存Sub至extendOptions._Ctor[cid]中并返回Sub
-
-#### Vue.component、Vue.direvtive、Vue.filter
-
-1. 三个方法均接收参数(id, definition)
-2. 如果不传definition，那么返回对应的资源，如Vue.directive("focus")会返回Vue.options.directives['focus']
-3. 对于Vue.component，如果definition没有name属性，则将id作为name属性
-4. 对于Vue.directive，definition最终都会转为{ bind: definition, update: definition }的格式
-5. 执行结果是往对应的资源存储定义：Vue.options[type + 's'][id] = definition
-
-### 3. 构建相关
-
-+ 往Vue.config添加属性和方法：
-  - Vue.config.mustUseProp = mustUseProp // 用于判断是否为原生dom属性，如selected、checked等
-  - Vue.config.isReservedTag = isReservedTag // 判断是否为保留标签的方法（原生html和svg标签）
-  - Vue.config.isReservedAttr = isReservedAttr // 判断是否为保留属性的方法（style，class）
-  - Vue.config.getTagNamespace = getTagNamespace // 获取命名空间的方法（svg和mathML，分别返回svg和math)
-  - Vue.config.isUnknownElement = isUnknownElement // 判断是否为无效的html标签，非浏览器下永远返回true
-
-+ 往Vue.options添加属性方法：
-
-  - 将v-model和v-show指令合并至Vue.options.directives
-  - 将transition和transition-group组件合并至Vue.options.components
-
-+ Vue.prototype新增__path__方法
-+ Vue.prototype新增与平台无关的$mount方法
-
-### 4. runtime-with-compiler构建相关
-
-+ 重写Vue.prototye.$mount方法
-  - 缓存原来的与平台无关的$mount方法
-  - 不能挂在在body和html的处理
-  - 如果没有传render函数，会将template编译成render函数
-  - template可以由外部传入，也可以由外部传入的el对应的DOM节点的outerHTML
-  - 外部传入的tempalte是DOM节点或者id，则为对应DOM的innerHTML，否则直接使用模板
-  - 编译后的render函数和staticRenderFns会分别赋值给options.render和options.staticRenderFns
-  - 最后会调用被缓存的与平台无关的$mount方法
-+ 增加Vue.compile静态方法，方法为compileToFunctions的引用
++ 增加`Vue.compile`，用于将`template`转化为**render函数**
 
 ## 二、Vue实例化
 
