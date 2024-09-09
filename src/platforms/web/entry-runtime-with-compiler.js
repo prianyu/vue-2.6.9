@@ -28,7 +28,7 @@ Vue.prototype.$mount = function (
   el?: string | Element, // 挂载元素
   hydrating?: boolean // 是否为服务端渲染
 ): Component {
-  
+  // debugger
   el = el && query(el) // 获取元素
 
   /* istanbul ignore if */
@@ -45,7 +45,7 @@ Vue.prototype.$mount = function (
   if (!options.render) {
     let template = options.template
     if (template) {  // 传入template
-      if (typeof template === 'string') { 
+      if (typeof template === 'string') {
         // 当template是以#开头时，被用作选择符，提取其innerHTML作为模板
         // 通常这么使用<script type="x-template" id="app"></script>，所以实际的模板内容是innerHTML
         if (template.charAt(0) === '#') {
@@ -58,7 +58,7 @@ Vue.prototype.$mount = function (
             )
           }
         }
-      } else if (template.nodeType) { 
+      } else if (template.nodeType) {
         // template为DOM节点，认为是一个存放模板的元素，也是获取其innerHTML
         template = template.innerHTML
       } else { // 不是DOM也不是字符串
@@ -67,7 +67,7 @@ Vue.prototype.$mount = function (
         }
         return this
       }
-    } else if (el) {  
+    } else if (el) {
       // 没有传入template但是传入了el
       template = getOuterHTML(el) // 将template设置为元素的outerHTML
     }
@@ -111,7 +111,7 @@ Vue.prototype.$mount = function (
  * Get outerHTML of elements, taking care
  * of SVG elements in IE as well.
  */
-function getOuterHTML (el: Element): string {
+function getOuterHTML(el: Element): string {
   if (el.outerHTML) {
     return el.outerHTML
   } else {

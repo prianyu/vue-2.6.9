@@ -12,32 +12,41 @@ src
 ```
 ## 主流程
 ### （1）实例化阶段
-1. Vue实例化，会执行`vm._init`方法，会添加_uid,_isVue,_self,_renderProxy等属性，并执行以下流程
-2. 选项合并，合并过程中会按照子组件合和非子组件做不同的合并策略
-3. 执行initLifecycle(vm)，初始化一些与组件生命周期相关的属性和方法，如$parent,$children,$root,$_watcher,_inactive,_isMounted,_isDestroyed等
-4. 执行initEvent(vm)，初始化一些与事件相关的属性，子组件会根据父组件绑定的属性进行初始化，如_event,_hasHookEvent，如果此时是子组件，且父组件上传递了事件（vm._parentListeners），则会更新子组件的绑定事件列表，对`vm._parentListeners进行包装
-5. 执行initRender(vm)，初始化一些与渲染相关的属性和方法，如$vnode,_vnode,$slots,$scopeSlots,$attrs,$listeners,$createElement,_c
-6. 执行beforeCreate生命周期，因为此时还没初始化数据，所以获取不到data，props等数据
-7. 执行initInjections(vm)，对inject进行初始化，其取值来源于祖先元素的_provided属性，添加的inject不能在子组件直接修改
-8. 执行initState(vm)，会分别执行initProps,initData,initMethods,initWatch,initComputed方法，分别对props、data、methods、watch、computed初始化，同时会添加_watchers属性，用于存储观察者。Vue响应式的核心原理就是在这一个阶段进行的
-9. 执行initProvide(vm)，初始化provide，其处理的结果会存在实例的_provided上，这于子组件实例化inject时从_provided获取数据是相对应的
-10. 执行created生命周期，到这一步，基本数据已经都初始化完毕了
-11. 判断是否传了el，是的话则执行$mount(el)，进入挂载阶段；否则等待手动挂载，手动挂载后也会进入挂载阶段
+1. Vue实例化，会执行`vm._init`方法，会添加`_uid`,`_isVue`,`_self`,`_renderProxy`等属性
+2. 进行选项合并，合并过程中会按照子组件合和非子组件做不同的合并策略，得到`vm.$options`属性，合并后的选项具有`components`、`directives`、`filters`、`render`、`_base`等属性
+3. 执行`initLifecycle(vm)`，初始化一些与组件生命周期相关的属性和方法，如`$parent`,`$children`,`$root`,`$refs`,`_watcher`,`_inactive`,`_isMounted`,`_isDestroyed`,`_isBeingDestroyed`等
+4. 执行`initEvent(vm)`，初始化一些与事件相关的属性，添加`_event`,`_hasHookEvent`属性，子组件会根据父组件上绑定的事件（传递了`vm._parentListeners`），事件列表，对`vm._parentListeners`进行包装
+5. 执行`initRender(vm)`，初始化一些与渲染相关的属性和方法，如`$vnode`,`_vnode`,`$slots`,`$scopeSlots`,`staticTress`,`$attrs`,`$listeners`,`$createElement`,`_c`
+6. 执行`beforeCreate`生命周期，因为此时还没初始化数据，所以获取不到`data`，`props`等数据
+7. 执行`initInjections(vm)`，对`inject`进行初始化，其取值来源于祖先元素的`_provided`属性，`inject`属性会被转为getter属性，不可直接修改
+8. 执行`initState(vm)`，添加`_watchers`属性，用于存储观察者。并依次执行`initProps`,`initMethods`,`initData`,`initWatch`,`initComputed`方法，分别对`props`、`methods`、`data`、`watch`、`computed`初始化。其中`data`和`props`会被转为响应式的`_data`和`_props`属性，`computed`也会被转为`setter/getter`，并为计算属性创建了相应的`watcher`对象`_computedWatchers`，所创建的`watcher`是惰性求值的，在依赖的属性变化时会将其标记为`dirty`，更新时重新计算。`watch`选项则被转为间接调用`$watch`方法
+9. 执行`initProvide(vm)`，初始化`provide`，其处理的结果会存在实例的`_provided`上，这与子组件实例化`inject`时从`_provided`获取数据是相对应的
+10. 执行`created`生命周期，到这一步，基本数据已经都初始化完毕了
+11. 判断是否传了`el`，是的话则执行`$mount(el)`，进入挂载阶段；否则等待手动挂载，手动挂载后也会进入挂载阶段
  
 ### （2）挂载阶段
 
-1. 判断是否有render函数，如果没有则进入8，否则进入2
-2. 执行beforeMount生命周期
-3. 定义渲染Watcher，渲染Watcher里会有before钩子，如果不是首次渲染会执行beforeUpdate钩子
-4. 执行vm._render()生成虚拟DOM（VNode）
-5. 执行vm._update()生成真实DOM
-6. 如果是首次挂载，会执行mounted的生命周期
+1. 判断是否有**render函数**，如果没有则进入8，否则进入2
+2. 添加`vm.$el`属性存储挂载元素，执行`beforeMount`生命周期
+3. 定义**渲染Watcher**，传入`updateComponent`作为`watcher`的getter函数，传入**before钩子**，在watcher更新时执行，如果不是首次渲染会执行`beforeUpdate`钩子，实例化watcher后会执行执行`updateComponent`:
+  - 执行`vm._render()`生成虚拟DOM（**VNode**）
+  - 执行`vm._update()`生成真实DOM
+  - 在这个过程中会递归处理子组件，执行组件的初始化、挂载、更新和生命周期
+6. 如果是首次挂载，会执行`mounted`的生命周期，子组件的`mounted`钩子在patch阶段就执行完了，所以挂载的顺序是从子组件到父组件的
 7. 挂载完毕，等待更新
-8. 如果有template，取模板为template，否则根据是否有el取el.outerHTML作为模板
+8. 如果有`template`选项，取模板为template，否则根据是否有el选项取el.outerHTML作为模板
 9. 将模板进行解析并生成render函数
 10. 进入2
 
 ### （3）更新阶段
+
+1. 触发`setter`，通知依赖更新更新
+2. 将watchers添加到异步更新队列中，等待执行更新
+3. 在`nextTick`中刷新队列，执行更新回调
+4. 执行`watcher`的`before`钩子，从而执行`beforeUpdate`钩子
+5. 执行`watcher.run()`，对`watcher`重新求值。对于渲染`watcher`，即重新执行`_render`和`_update`方法，从而重新生成虚拟DOM和真实DOM，并执行`patch`方法，对新老节点进行比对，生成差异，并更新DOM
+6. 执行`keep-alive`组件包裹的`activated`钩子
+7. 执行`updated`钩子
                   
 ## 一、Vue定义
 ### （1） prototype

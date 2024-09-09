@@ -12,7 +12,8 @@
         <!-- CSS scoped -->
         <!-- <CssScope /> -->
         <!-- class合并 -->
-        <MergeClass class="outer"/>
+        <!-- <MergeClass class="outer"/> -->
+         {{ count }}
         
     </div>
 </template>
@@ -33,5 +34,16 @@ export default {
         CssScope,
         MergeClass,
     },
+    data() {
+        return {
+            count: 123
+        }
+    },
+    created(){
+        setTimeout(()=> {
+            this.count++
+        }, 0)
+        
+    }
 }
 </script>

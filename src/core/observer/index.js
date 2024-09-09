@@ -33,7 +33,7 @@ const arrayKeys = Object.getOwnPropertyNames(arrayMethods) // 数组变异方法
  */
 export let shouldObserve: boolean = true
 
-export function toggleObserving (value: boolean) {
+export function toggleObserving(value: boolean) {
   shouldObserve = value
 }
 
@@ -50,22 +50,22 @@ export class Observer {
   dep: Dep;
   vmCount: number; // number of vms that have this object as root $data
 
-  constructor (value: any) {
+  constructor(value: any) {
     this.value = value // 保存原有对象的引用
     this.dep = new Dep() // 创建一个依赖收集器
     // 初始化的实例应用计数为0，vmCount > 0，$set 方法不进行处理
     // 只有根数据才会增加vmCount计数，根数据实例化后不允许被直接替换
-    this.vmCount = 0 
+    this.vmCount = 0
     // 使用属性描述对象，往被观察的对象添加__ob__属性，引用当前创建的观察者实例，
     //__ob__是不可以枚举的
-    def(value, '__ob__', this) 
-    if (Array.isArray(value)) { 
+    def(value, '__ob__', this)
+    if (Array.isArray(value)) {
       // 对于数组，通过重写几个方法来实现监测（7个变异方法）
       // 实现的基本思路是通过方法拦截的方式，arrayMethods是重写的方法的集合
       // 将arrayMethods作为数组的原型，将数组原有的原型作为arrayMethods的原型
       if (hasProto) { // 支持__proto__属性， 将arrayMethods作为__proto__的属性值，这样就不需要为每一个数组对象都增加属性
         protoAugment(value, arrayMethods)
-      } else { 
+      } else {
         //对于不支持__proto__属性的，将重写的方法直接扩展至数组上面，这样就不会通过原型去查找方法了
         copyAugment(value, arrayMethods, arrayKeys)
       }
@@ -84,7 +84,7 @@ export class Observer {
    * value type is Object.
    * 遍历一个对象的属性，并将其所有的属性转为getter/setter
    */
-  walk (obj: Object) {
+  walk(obj: Object) {
     const keys = Object.keys(obj) // 属性列表
     for (let i = 0; i < keys.length; i++) {
       // #mark-0
@@ -96,7 +96,7 @@ export class Observer {
    * Observe a list of Array items.
    * 对数组做遍历递归观察
    */
-  observeArray (items: Array<any>) {
+  observeArray(items: Array<any>) {
     for (let i = 0, l = items.length; i < l; i++) {
       observe(items[i])
     }
@@ -109,7 +109,7 @@ export class Observer {
  * Augment a target Object or Array by intercepting
  * the prototype chain using __proto__
  */
-function protoAugment (target, src: Object) {
+function protoAugment(target, src: Object) {
   /* eslint-disable no-proto */
   target.__proto__ = src
   /* eslint-enable no-proto */
@@ -123,7 +123,7 @@ function protoAugment (target, src: Object) {
  * 这些变异的方法是不可枚举的，因此遍历时也是不可见的
  */
 /* istanbul ignore next */
-function copyAugment (target: Object, src: Object, keys: Array<string>) {
+function copyAugment(target: Object, src: Object, keys: Array<string>) {
   for (let i = 0, l = keys.length; i < l; i++) {
     const key = keys[i]
     def(target, key, src[key])
@@ -139,7 +139,7 @@ function copyAugment (target: Object, src: Object, keys: Array<string>) {
  * 创建后的数据会有一个__ob__属性
  * __ob__里会有一个dep对象属性用于收集依赖
  */
-export function observe (value: any, asRootData: ?boolean): Observer | void {
+export function observe(value: any, asRootData: ?boolean): Observer | void {
 
   // 只观察非VNode类型的对象
   if (!isObject(value) || value instanceof VNode) {
@@ -147,7 +147,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
   }
   let ob: Observer | void
   // 已经观测
-  if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) { 
+  if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
     ob = value.__ob__
   } else if (
     shouldObserve && // 需要被观察
@@ -196,7 +196,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
  *     ]
  * }
  */
-export function defineReactive (
+export function defineReactive(
   obj: Object,
   key: string,
   val: any,
@@ -257,14 +257,14 @@ export function defineReactive (
   Object.defineProperty(obj, key, {
     enumerable: true, // 可枚举
     configurable: true, // 可删除
-    get: function reactiveGetter () {
+    get: function reactiveGetter() {
       const value = getter ? getter.call(obj) : val // 优先从getter取值
       if (Dep.target) { // 收集当前watcher
-       // dep.depend()会调用Dep.target.addDep(Dep.target)，将dep反向收集到watcher中
-       // Dep.target.addDep(Dep.target)又会调用dep的addSub方法，会将Dep.target添加至dep.subs中，从而实现依赖的收集
-       // 调用完毕后Dep.target的deps也存放着dep列表，这个反向收集的dep列表，在watcher被销毁时，可以清空dep
-       // 闭包的dep收集一次依赖，这样当obj[key]直接变化时可以触发依赖的更新
-        dep.depend() 
+        // dep.depend()会调用Dep.target.addDep(Dep.target)，将dep反向收集到watcher中
+        // Dep.target.addDep(Dep.target)又会调用dep的addSub方法，会将Dep.target添加至dep.subs中，从而实现依赖的收集
+        // 调用完毕后Dep.target的deps也存放着dep列表，这个反向收集的dep列表，在watcher被销毁时，可以清空dep
+        // 闭包的dep收集一次依赖，这样当obj[key]直接变化时可以触发依赖的更新
+        dep.depend()
         if (childOb) {
           // 走到这里说明获取到的值是一个引用类型，其__ob__.dep也会收集一次当前的watcher
           // 为什么这里需要重复收集呢？因为当前对于obj[key]的依赖收集是在闭包的dep上
@@ -279,14 +279,15 @@ export function defineReactive (
           // 由于数据的项是没有闭包的dep的，对于项如果是引用类型的话，同理也是需要将watcher收集到每一项的__ob__.dep里面，
           // 用于后续动态新增属性
           // 对于vm.$delete也是同样的道理
-          if (Array.isArray(value)) { 
+          if (Array.isArray(value)) {
             dependArray(value)
           }
         }
       }
       return value
     },
-    set: function reactiveSetter (newVal) {
+    set: function reactiveSetter(newVal) {
+      debugger
       const value = getter ? getter.call(obj) : val // 获取旧值
       /* eslint-disable no-self-compare */
       // 值没有改变，或者前后的值为NaN，则不做处理
@@ -327,7 +328,7 @@ export function defineReactive (
 // 1. 非对象类型、vm实例以及根data是不允许被设置属性的
 // 2. 对于数组，使用数组的splice方法设置对应索引的上的元素
 // 3. 对于对象，如果设置对象上本身已经存在的值或者如果原本不存在但对象本身不是响应式的则会直接修改，否则会新增响应式属性并通知更新
-export function set (target: Array<any> | Object, key: any, val: any): any {
+export function set(target: Array<any> | Object, key: any, val: any): any {
   // 只能在对象上设置属性
   if (process.env.NODE_ENV !== 'production' &&
     (isUndef(target) || isPrimitive(target))
@@ -378,7 +379,7 @@ export function set (target: Array<any> | Object, key: any, val: any): any {
 // 1. 非对象类型、vm实例以及根data是不允许删除属性的
 // 2. 对于数组，使用数组的splice方法删除对应索引的上的元素
 // 3. 对于对象，如果设置对象不存在属性则不处理，存在则删除并通知更新
-export function del (target: Array<any> | Object, key: any) {
+export function del(target: Array<any> | Object, key: any) {
   if (process.env.NODE_ENV !== 'production' &&
     (isUndef(target) || isPrimitive(target))
   ) {
@@ -422,7 +423,7 @@ export function del (target: Array<any> | Object, key: any) {
  * 可以通过数据项存储的__ob__来获取到dep进行依赖收集，
  * 这样在后续如果有为数组的项进行动态新增属性或者和删除属性时，我们就可以通过__ob__.dep上收集到的依赖来触发依赖的更新
  */
-function dependArray (value: Array<any>) {
+function dependArray(value: Array<any>) {
   // 遍历数组
   for (let e, i = 0, l = value.length; i < l; i++) {
     e = value[i]
