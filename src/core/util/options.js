@@ -35,7 +35,7 @@ const strats = config.optionMergeStrategies; // 获取自定义的选项合并�
  */
 // ---------------------------el和propsData合并策略---------------
 if (process.env.NODE_ENV !== "production") {
-  strats.el = strats.propsData = function(parent, child, vm, key) {
+  strats.el = strats.propsData = function (parent, child, vm, key) {
     // 子组件是不允许在选线各种传入el和propsData的
     // vm来自于mergeField函数，间接来自于mergeOptions函数
     // mergeOptions函数在组件实例化时被调用（vm._init），也可以在Vue.extend中被调用
@@ -44,7 +44,7 @@ if (process.env.NODE_ENV !== "production") {
     if (!vm) {
       warn(
         `option "${key}" can only be used during instance ` +
-          "creation with the `new` keyword."
+        "creation with the `new` keyword."
       );
     }
     return defaultStrat(parent, child);
@@ -56,12 +56,13 @@ if (process.env.NODE_ENV !== "production") {
 /**
  * Helper that recursively merges two data objects together.
  * 递归合并data选项，将from对象中的属性合并到to中
- * 会采用set来设置值
+ * to中不存在的属性会采用set来设置属性
  */
 function mergeData(to: Object, from: ?Object): Object {
   if (!from) return to;
   let key, toVal, fromVal;
 
+  // 对象所有的自身属性（含不可枚举和symbol）：只返回可枚举属性
   const keys = hasSymbol ? Reflect.ownKeys(from) : Object.keys(from);
 
   for (let i = 0; i < keys.length; i++) {
@@ -131,7 +132,8 @@ export function mergeDataOrFn(
       const defaultData =
         typeof parentVal === "function" ? parentVal.call(vm, vm) : parentVal;
       if (instanceData) {
-        // 实例中传了data，则合并
+        // 实例中传了data，则将默认的defaultData 合并到instanceData
+        // 只有instanceData上不存在的属性，才合并
         return mergeData(instanceData, defaultData);
       } else {
         // 不合并
@@ -144,19 +146,19 @@ export function mergeDataOrFn(
 // data合并最终会被处理成一个函数
 // 之所以处理成一个函数，是因为props和inject在实例初始化的时候是先于data的
 // 这样就可以在data中获取到props和inject
-strats.data = function(
+strats.data = function (
   parentVal: any,
   childVal: any,
   vm?: Component
 ): ?Function {
   if (!vm) {
-    // 没有传入vm则为子组件，data必须要为一个函数
+    // 没有传入vm则为子组件构造函数的选项合并，data必须要为一个函数
     if (childVal && typeof childVal !== "function") {
       process.env.NODE_ENV !== "production" &&
         warn(
           'The "data" option should be a function ' +
-            "that returns a per-instance value in component " +
-            "definitions.",
+          "that returns a per-instance value in component " +
+          "definitions.",
           vm
         );
 
@@ -181,8 +183,8 @@ function mergeHook(
     ? parentVal
       ? parentVal.concat(childVal)
       : Array.isArray(childVal)
-      ? childVal
-      : [childVal]
+        ? childVal
+        : [childVal]
     : parentVal;
   return res ? dedupeHooks(res) : res;
 }
@@ -232,7 +234,7 @@ function mergeAssets(
   }
 }
 
-ASSET_TYPES.forEach(function(type) {
+ASSET_TYPES.forEach(function (type) {
   strats[type + "s"] = mergeAssets;
 });
 
@@ -245,7 +247,7 @@ ASSET_TYPES.forEach(function(type) {
  * another, so we merge them as arrays.
  * watch的选项合并策略为合并为一个数组
  */
-strats.watch = function(
+strats.watch = function (
   parentVal: ?Object,
   childVal: ?Object,
   vm?: Component,
@@ -274,8 +276,8 @@ strats.watch = function(
     ret[key] = parent
       ? parent.concat(child) // 合并
       : Array.isArray(child)
-      ? child
-      : [child]; // 转数组
+        ? child
+        : [child]; // 转数组
   }
   return ret;
 };
@@ -285,7 +287,7 @@ strats.watch = function(
  * Other object hashes.
  * props、methods、inject、computed采用覆盖的方式合并
  */
-strats.props = strats.methods = strats.inject = strats.computed = function(
+strats.props = strats.methods = strats.inject = strats.computed = function (
   parentVal: ?Object,
   childVal: ?Object,
   vm?: Component,
@@ -307,7 +309,7 @@ strats.provide = mergeDataOrFn;
  * Default strategy.
  * 默认的合并策略，采用替换的方式
  */
-const defaultStrat = function(parentVal: any, childVal: any): any {
+const defaultStrat = function (parentVal: any, childVal: any): any {
   return childVal === undefined ? parentVal : childVal;
 };
 
@@ -328,16 +330,16 @@ export function validateComponentName(name: string) {
   ) {
     warn(
       'Invalid component name: "' +
-        name +
-        '". Component names ' +
-        "should conform to valid custom element name in html5 specification."
+      name +
+      '". Component names ' +
+      "should conform to valid custom element name in html5 specification."
     );
   }
   if (isBuiltInTag(name) || config.isReservedTag(name)) {
     warn(
       "Do not use built-in or reserved HTML elements as component " +
-        "id: " +
-        name
+      "id: " +
+      name
     );
   }
 }
@@ -379,7 +381,7 @@ function normalizeProps(options: Object, vm: ?Component) {
   } else if (process.env.NODE_ENV !== "production") {
     warn(
       `Invalid value for option "props": expected an Array or an Object, ` +
-        `but got ${toRawType(props)}.`,
+      `but got ${toRawType(props)}.`,
       vm
     );
   }
@@ -414,7 +416,7 @@ function normalizeInject(options: Object, vm: ?Component) {
   } else if (process.env.NODE_ENV !== "production") {
     warn(
       `Invalid value for option "inject": expected an Array or an Object, ` +
-        `but got ${toRawType(inject)}.`,
+      `but got ${toRawType(inject)}.`,
       vm
     );
   }
@@ -442,7 +444,7 @@ function assertObjectType(name: string, value: any, vm: ?Component) {
   if (!isPlainObject(value)) {
     warn(
       `Invalid value for option "${name}": expected an Object, ` +
-        `but got ${toRawType(value)}.`,
+      `but got ${toRawType(value)}.`,
       vm
     );
   }
@@ -488,7 +490,7 @@ export function mergeOptions(
   // 合并时是将extends和mixins合并至parent，合并后的parent已经是一个新的对象
   // 由于会递归调用mergeOptions，所以mixins和extends是支持嵌套的
 
-  // 由于extends比mixin先处理，mixins又比组件实例的选项先处理，所以合并后的一些选项
+  // 由于extends比mixin先处理，mixins又比组件实例的选项先处理，所以合并后的一些选项执行
   // 的优先级是extends > mixins > component，比如created钩子
   // 而对于一些使用覆盖合并策略的选项，则component会覆盖mixins，mixins会覆盖extends，如props、data、methods
   if (!child._base) {

@@ -75,7 +75,7 @@ export function initLifecycle(vm: Component) {
 // 1. 添加_vnode属性，存储由render函数生成的vnode
 // 2. 执行patch，对新旧VNode进行比对，生成新的DOM
 export function lifecycleMixin(Vue: Class<Component>) {
-  Vue.prototype._update = function(vnode: VNode, hydrating?: boolean) {
+  Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this;
     const prevEl = vm.$el; // 当前实例老的根DOM节点，根节点初次渲染时是页面的挂载点
     const prevVnode = vm._vnode; // 老的VNode
@@ -118,14 +118,14 @@ export function lifecycleMixin(Vue: Class<Component>) {
     // updated in a parent's updated hook.
   };
   // 强制更新组件，调用渲染watcher上的update方法
-  Vue.prototype.$forceUpdate = function() {
+  Vue.prototype.$forceUpdate = function () {
     const vm: Component = this;
     if (vm._watcher) {
       vm._watcher.update();
     }
   };
   // 组件销毁
-  Vue.prototype.$destroy = function() {
+  Vue.prototype.$destroy = function () {
     const vm: Component = this;
     if (vm._isBeingDestroyed) {
       // 正在销毁的过程中
@@ -200,8 +200,8 @@ export function mountComponent(
       ) {
         warn(
           "You are using the runtime-only build of Vue where the template " +
-            "compiler is not available. Either pre-compile the templates into " +
-            "render functions, or use the compiler-included build.",
+          "compiler is not available. Either pre-compile the templates into " +
+          "render functions, or use the compiler-included build.",
           vm
         );
       } else {
@@ -291,7 +291,7 @@ export function updateChildComponent(
   }
 
   // determine whether component has slot children
-  // we need to do this before overwriting $options._renderChildren.
+  // we need to do this before overwriting $options..
 
   // check if there are dynamic scopedSlots (hand-written or compiled but with
   // dynamic slot names). Static scoped slots compiled from template has the

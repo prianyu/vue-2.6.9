@@ -12,9 +12,7 @@
         <!-- CSS scoped -->
         <!-- <CssScope /> -->
         <!-- class合并 -->
-        <!-- <MergeClass class="outer"/> -->
-         {{ count }}
-        
+        <MergeClass class="outer"/>
     </div>
 </template>
 <script>
@@ -33,17 +31,7 @@ export default {
         HOC,
         CssScope,
         MergeClass,
-    },
-    data() {
-        return {
-            count: 123
-        }
-    },
-    created(){
-        setTimeout(()=> {
-            this.count++
-        }, 0)
-        
     }
+
 }
 </script>

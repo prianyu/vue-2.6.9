@@ -17,7 +17,7 @@ let uid = 0
 // 2. 添加_isVue属性，标记为Vue组件，具有该标记的对象后续不会做响应式数据转换
 // 3. 选项合并，子组件和非子组件使用不同的选项合并策略
 // 4. 
-export function initMixin (Vue: Class<Component>) {
+export function initMixin(Vue: Class<Component>) {
   Vue.prototype._init = function (options?: Object) {
     const vm: Component = this
     vm._uid = uid++ // 每个Vue实例都会有一个uid， 由0开始自增
@@ -48,9 +48,9 @@ export function initMixin (Vue: Class<Component>) {
       // 选项合并后会对props，inject，directives做选项的规范化，
       // 以及对mixins，extends，components、data、methods等都做了合并
       vm.$options = mergeOptions(
-         // 处理构造器选项，只有是子类构造函数，且子类或者基类构造函数选项改变了才会重新计算
-         // 构造函数上的options会有内置组件（keepAlive，transition等）、指令（v-model、v-show）等
-         // 不是子类则直接返回的构造函数的选项
+        // 处理构造器选项，只有是子类构造函数，且子类或者基类构造函数选项改变了才会重新计算
+        // 构造函数上的options会有内置组件（keepAlive，transition等）、指令（v-model、v-show）等
+        // 不是子类则直接返回的构造函数的选项
         resolveConstructorOptions(vm.constructor),
         options || {}, // 实例化时的选项
         vm // 组件实例
@@ -82,7 +82,7 @@ export function initMixin (Vue: Class<Component>) {
     // 初始化_vnode,$vnode,$slots,$scopeSlots,$createElement,_c以及响应式的$listeners,$attrs等属性
     initRender(vm)
     // 执行beforeCreate钩子
-    callHook(vm, 'beforeCreate') 
+    callHook(vm, 'beforeCreate')
     // 在data和props前处理inject，会逐级遍历祖先元素的provide获取对应inject并注入，inject不是响应式的且不可被修改
     initInjections(vm) // resolve injections before data/props
     // 响应式数据初始化，依次处理props、methods、data、computed、watch
@@ -112,11 +112,11 @@ export function initMixin (Vue: Class<Component>) {
 
 
 // 子组件选项合并
-export function initInternalComponent (vm: Component, options: InternalComponentOptions) {
+export function initInternalComponent(vm: Component, options: InternalComponentOptions) {
   // $options以构造器的options作为原型
   const opts = vm.$options = Object.create(vm.constructor.options)
   // doing this because it's faster than dynamic enumeration.
-  // 同步原型的属性，提高查找速度
+  // 添加parent和_parentVnode属性
   const parentVnode = options._parentVnode // 与vm.$vnode是同一个引用，是子组件的占位vnode
   opts.parent = options.parent // 父组件实例引用
   opts._parentVnode = parentVnode // 占位节点的引用，当前组件实例在父组件中的VNode表示
@@ -145,7 +145,7 @@ export function initInternalComponent (vm: Component, options: InternalComponent
 // 5. 合并superOptions和extendOptions，作为构造函数的最终选项
 // 6. 增加组件的自查找属性，可以通过类的名称获取到组件的构造函数
 
-export function resolveConstructorOptions (Ctor: Class<Component>) {
+export function resolveConstructorOptions(Ctor: Class<Component>) {
   let options = Ctor.options // 选项引用
   if (Ctor.super) { // 有super说明是个子类构造器
     const superOptions = resolveConstructorOptions(Ctor.super) // 递归合并
@@ -174,7 +174,7 @@ export function resolveConstructorOptions (Ctor: Class<Component>) {
 }
 
 // 用于获取子类构造函数被修改或者新增的选项集合
-function resolveModifiedOptions (Ctor: Class<Component>): ?Object {
+function resolveModifiedOptions(Ctor: Class<Component>): ?Object {
   let modified
   const latest = Ctor.options // 获取现在的构造器选项
   const sealed = Ctor.sealedOptions // 获取创建子类构造函数冻结的选项（创建子类那一刻的构造器选项）

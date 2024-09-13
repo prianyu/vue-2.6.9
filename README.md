@@ -138,7 +138,7 @@ src
 
 + 增加`Vue.compile`，用于将`template`转化为**render函数**
 
-## 二、Vue实例化
+## 二、Vue组件实例化
 
 执行`this._init(options)`后
 + 添加`_uid`,`_self`,`_isVue`等属性
@@ -163,129 +163,182 @@ src
 + 如果传入了`el`，则调用`vm.$mount`进行挂载，进入挂载阶段
   - 调用`mountComponent`函数开始挂载
 
-### （一） 选项合并与规范化
+### （一） 选项规范化与选项合并
 
+Vue实例化时会根据传入的`options`参数初始化实例。在`options`的各个选项中，Vue是支持不同的参数格式的，同时，Vue也提供了`mixin`、`use`、`extend`等方法来对组件实例进行扩展。因此，在实例真正初始化之前需要对`options`的选项进行规范化与选择适当合并策略进行合并
+
+由于选项的规范化和合并是一个比较耗时的处理，Vue会根据会`options`是否有`_isComponent`属性选择不同的合并策略来合并选项。
+
+```js
+  if (options && options._isComponent) {
+    initInternalComponent(vm, options)
+  } else { 
+    vm.$options = mergeOptions(
+      resolveConstructorOptions(vm.constructor),
+      options || {},
+      vm
+    )
+  }
+```
+
+`_isComponent`是在渲染阶段解析到子组件时由内部实例化组件时添加的一个属性。所创建的实例是由`Vue.extend`创建的子类构造器实例化过来的，在创建子类构造器时已经对选项进行了一次合并，因此后续使用该子类构造器实例化的组件无需再进行选项的遍历和规范化合并处理，仅需要添加组件实例特有的一些实例属性即可。其它的属性（如`directives`、`filters`、生命周期钩子等）从`vm.$options.__proto__`中获取，这样可以提供选项合并的性能。
+
+#### 1. mergeOptions函数
 > 文件位置：[src/core/util/options.js](./src/core/util/options.js)
 
-会根据实例上是否有options._isComponent属性选择不同的合并策略来进行合并。当_isComponent为true时代表的是子组件，会选择`initInternalComponent`进行选项合并，否则使用`mergeOptions`来合并。
-> _isComponent是在渲染阶段解析到子组件时内部实例化组件添加的一个属性。由于选项合并是比较耗时的，所以对于内部的创建的组件，做了特别的合并处理，这样可以提高选项合并的性能
-#### 1. mergeOptions函数
-参数: (parent,child,vm)
+参数: `(parent,child,vm)`
 
-选项合并的工具函数，专门用于合并Vue实例选项，如props、inject、directives等。
+`mergeOptions`函数会对`props`、`inject`、`directives`等选项进行规范化，规范化后对不同的选项选择相应的合并策略进行合并。
 
-+ props规范化
-  - 名称统一转为驼峰命名
-  - 数组类型的props统一转为：{[name]: {type: null}}
-  ```javascript
-  // 1. 情况一
-  {
-    props: ['age', 'name']
+**（1）props规范化**
+
+将`props`名称统一转为驼峰命名，并统一转为`{name: {type: null, default?: defaultValue}}`的对象格式
+
+```js
+// 1. 情况一
+{
+  props: ['age', 'name']
+}
+// 规范化后
+{
+  props: {
+    age: {type: null}
+    name: {type: null}
   }
-  // 规范化后
-  {
-    props: {
-      age: {type: null}
-      name: {type: null}
+}
+// 情况二
+{
+  props: {
+    age: {
+      type: [Number, String],
+    },
+    name: String,
+    gender: {
+      type: String,
+      default: "男"
     }
   }
-  // 情况二
-  {
-    props: {
-      age: {
-        type: [Number, String],
-      },
-      name: String,
-      gender: {
-        type: String,
-        default: "男"
-      }
+}
+// 规范化后
+{
+  props: {
+    age: {
+      type: [Number, String]
+    },
+    name: {
+      type: String
+    },
+    gender: {
+      type: String,
+      default: '男'
     }
   }
-  // 规范化后
-  {
-    props: {
-      age: {
-        type: [Number, String]
-      },
-      name: {
-        type: String
-      },
-      gender: {
-        type: String,
-        default: '男'
-      }
+}
+```
+
+**（2）inject规范化**
+
+- 数组类型统一转为`{ key: {from: key} }`
+- 对象类型统一转为`{ key: { from :key, ...val} }`格式
+
+```javascript
+// 情况一
+{
+  inject: ['age', 'name']
+}
+// 规范化后
+{
+  inject: {
+    age: { from: 'age'},
+    name: { from: 'name'}
+  }
+}
+// 情况二
+{
+  inject: {
+    age: 'myAge',
+    name: {
+      from: 'fullname',
+      default: '张三',
+      //...others
+    },
+    gender: {
+      default: '男'
     }
   }
-  ```
-+ inject规范化
-  - 数组类型统一转为{[key]: {from: key}}
-  - 对象类型统一转为{[key]: { from :key , ...val}}格式
-  ```javascript
-  // 情况一
-  {
-    inject: ['age', 'name']
-  }
-  // 规范化后
-  {
-    inject: {
-      age: { from: 'age'},
-      name: { from: 'name'}
+}
+// 规范化后
+{
+  inject: {
+    age: { from: 'myAge' },
+    name: {
+      from: 'fullname',
+      default: '张三',
+      // ...others
+    },
+    gender: {
+      from: 'gender',
+      default: '男'
     }
   }
-  // 情况二
-  {
-    inject: {
-      age: 'myAge',
-      name: {
-        from: 'fullname',
-        default: '张三',
-        //...others
-      },
-      gender: {
-        default: '男'
-      }
+}
+```
+
+**（3）directives规范化**
+
+对于函数形式的directive转为`{bind: def, update: def}`的格式
+
+```js
+{
+  directives: {
+    'my-directive': function (a, b) {}
+  }
+}
+// 规范化后
+{
+  directives: {
+    'my-directive': {
+      bind: function (a, b) {},
+      update: function (a, b) {}
     }
   }
-  // 规范化后
-  {
-    inject: {
-      age: { from: 'myAge' },
-      name: {
-        from: 'fullname',
-        default: '张三',
-        // ...others
-      },
-      gender: {
-        from: 'gender',
-        default: '男'
-      }
-    }
-  }
-  ```
-+ directives规范化的格式
-   - 对于函数形式（标记为def）的directive转为{bind: def, update: def}的格式
-+ 合并child的extends和mixins到parent
-+ 按照选项合并策略合并其他选项
-  - data: 递归合并，以覆盖的方式进行合并，会采用set方法来设置新的值
-  - props、methods、inject、computed：覆盖的方式，采用extend方法来扩展
-  - provide：同data
-  - watch：合并为数组
-  - directives,components,filters：构造函数、实例、父选项进行三方合并
-  - 生命周期钩子：合并成数组并去重
+}
+
+```
+**（4）递归合并extends和mixins选项**
+
+如果`child`上有`mixins`和`extends`选项，会递归调用`mergeOptions(parent, child.extends)`和`mergeOptions(parent, child.mixins)`进行选项合并。
+
+***（5）按照合并策略合并选项**
+不同的选项具有不同的合并策略，对于自定义选项可以使用`Vue.config.optionMergeStrategies`来定义，未定义的则使用默认的合并策略（覆盖的方式），对于非自定义选项，合并策略为：
+
+- `data`: 递归合并，将data转成一个合并函数，函数调用时会合并`child.data`和`parent.data`，以`child.data`为主，将`parent.data`中不存在于`child.data`的属性使用`set`函数设置
+- ` props`、`methods`、`inject`、`computed`：调用`extend`函数，采用后值覆盖前值的方式合并选项
+- `watch`：合并为数组
+- `directives`,`components`,`filters`：合并转为原型链的形式， 比如`vm.$options.components.__proto__ = {KeepAlive, Transition, TransitionGroup}`
+- `生命周期钩子`：合并成数组并去重
 
 #### 2. initInternalComponent函数
 参数: (vm, options)
 
-+ 将vm.$options的原型指向options
-+ $options.parent和$options._parentVnode指向原型对应的属性，提高查找的速度
-+ 同步其他属性
++ 子类构造器的`options`作为`vm.$options`的原型，所有子组件访问的选项都从原型中获取
++ 从**占位vnode**中提取各种实例属性添加到实例的`$options`中
   ```javascript
-  const vnodeComponentOptions = parentVnode.componentOptions
+
+  const parentVnode = options._parentVnode // 组件的占位符vnode
+  opts.parent = options.parent // 父组件实例
+  opts._parentVnode = parentVnode 
+  
+  const vnodeComponentOptions = parentVnode.componentOptions // 创建子组件的vnode的options
   opts.propsData = vnodeComponentOptions.propsData
   opts._parentListeners = vnodeComponentOptions.listeners
   opts._renderChildren = vnodeComponentOptions.children
   opts._componentTag = vnodeComponentOptions.tag
+
+  if (options.render) { // 渲染函数
+    opts.render = options.render
+    opts.staticRenderFns = options.staticRenderFns
+  }
   ```
 + 合并render方法和staticRenderFn方法
 

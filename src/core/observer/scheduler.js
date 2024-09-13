@@ -99,7 +99,7 @@ function flushSchedulerQueue() {
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index] // 当前watcher
     if (watcher.before) { // 有before钩子则执行before钩子，比如beforeUpdate
-      debugger
+      // debugger
       watcher.before()
     }
     id = watcher.id
@@ -133,7 +133,6 @@ function flushSchedulerQueue() {
   resetSchedulerState()
 
   // call component updated and activated hooks
-  debugger
   callActivatedHooks(activatedQueue) // 执行keep-alive组件的activated钩子
   callUpdatedHooks(updatedQueue)// 执行updated生命周期
 

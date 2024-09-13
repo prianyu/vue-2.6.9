@@ -41,7 +41,7 @@ import {
 const componentVNodeHooks = {
   // 初始化内联钩子
   // 该钩子执行完会执行组件实例的_init方法，进而执行$mount方法，实现组件的初始化和挂载
-  init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
+  init(vnode: VNodeWithData, hydrating: boolean): ?boolean {
     if (
       vnode.componentInstance &&
       !vnode.componentInstance._isDestroyed &&
@@ -67,7 +67,7 @@ const componentVNodeHooks = {
 
   // 父组件重新渲染，patch的过程会执行patchVnode函数，pathchVnode在遇到占位vnode的时候会执行此钩子
   // 此钩子的作用就是更新子组件的各种状态
-  prepatch (oldVnode: MountedComponentVNode, vnode: MountedComponentVNode) {
+  prepatch(oldVnode: MountedComponentVNode, vnode: MountedComponentVNode) {
     const options = vnode.componentOptions
     const child = vnode.componentInstance = oldVnode.componentInstance
     updateChildComponent(
@@ -80,10 +80,10 @@ const componentVNodeHooks = {
   },
 
   // vnode被插入的钩子
-  insert (vnode: MountedComponentVNode) {
+  insert(vnode: MountedComponentVNode) {
     const { context, componentInstance } = vnode
     // 初次挂载，标记为mounted状态，并执行mounted钩子
-    if (!componentInstance._isMounted) { 
+    if (!componentInstance._isMounted) {
       componentInstance._isMounted = true
       callHook(componentInstance, 'mounted')
     }
@@ -105,7 +105,7 @@ const componentVNodeHooks = {
   },
 
   // 销毁钩子
-  destroy (vnode: MountedComponentVNode) {
+  destroy(vnode: MountedComponentVNode) {
     const { componentInstance } = vnode
     if (!componentInstance._isDestroyed) {
       if (!vnode.data.keepAlive) { // 不在keep-alive的组件，执行$destroy
@@ -132,7 +132,7 @@ const hooksToMerge = Object.keys(componentVNodeHooks)
  * 1. 解析子组件构造器，对于Ctor是构造器对象的，会使用Vue.extend转为构造器。解析后的结果必须为一个函数（有没cid属性的，为异步组件）
  * 2. 对于异步组件，在组件解析完毕之前会返回一个占位的注释VNode节点，节点中保留了节点的各种信息，包括异步的工厂函数
  */
-export function createComponent (
+export function createComponent(
   Ctor: Class<Component> | Function | Object | void,
   data: ?VNodeData,
   context: Component,
@@ -178,7 +178,7 @@ export function createComponent (
   if (isUndef(Ctor.cid)) {
     asyncFactory = Ctor
     Ctor = resolveAsyncComponent(asyncFactory, baseCtor) // 解析异步组件
-    if (Ctor === undefined) { 
+    if (Ctor === undefined) {
       // 组件还没解析完成时，Ctor即为undefined
       // 此时返回一个占位的节点（注释节点），该节点保留了所有的原始信息
       // return a placeholder node for async component, which is rendered
@@ -259,13 +259,13 @@ export function createComponent (
       asyncFactory?: Function // 异步组件函数
     )
    */
-   // 创建的这个vnode是没有children的
+  // 创建的这个vnode是没有children的
   const name = Ctor.options.name || tag
   const vnode = new VNode(
     `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`, // 占位节点的标签名
     // 占位节点不传children，text，elm
     data, undefined, undefined, undefined, context,
-    // 但是其componentOptions保存这children以及其他props、events等信息
+    // 但是其componentOptions保存着children以及其他props、events等信息
     { Ctor, propsData, listeners, tag, children },
     // 异步组件才有这个
     asyncFactory
@@ -284,7 +284,7 @@ export function createComponent (
 }
 
 // 创建VNode的组件实例
-export function createComponentInstanceForVnode (
+export function createComponentInstanceForVnode(
   vnode: any, // we know it's MountedComponentVNode but flow doesn't
   parent: any, // activeInstance in lifecycle state，activeInstance是一个全局变量，引用着激活的实例
 ): Component {
@@ -308,7 +308,7 @@ export function createComponentInstanceForVnode (
 }
 
 // 组件的钩子合并
-function installComponentHooks (data: VNodeData) {
+function installComponentHooks(data: VNodeData) {
   const hooks = data.hook || (data.hook = {})
   //hooksToMerge = ['init'、'prepatch'、'insert'、'destroy']，所有钩子的key
   for (let i = 0; i < hooksToMerge.length; i++) {
@@ -324,7 +324,7 @@ function installComponentHooks (data: VNodeData) {
 // 合并钩子
 // 最终会返回一个新的函数，新的函数执行所有的钩子函数
 // 合并后返回的函数会有_merged标记
-function mergeHook (f1: any, f2: any): Function {
+function mergeHook(f1: any, f2: any): Function {
   const merged = (a, b) => {
     // flow complains about extra args which is why we use any
     f1(a, b)
@@ -339,10 +339,10 @@ function mergeHook (f1: any, f2: any): Function {
 // 将v-model的信息转化为prop和event的格式
 // 处理后的prop放在data.attrs上，处理后的event放置在data.on上
 // 对于event，如果本身已经有该事件的回调，则会合并事件回调
-function transformModel (options, data: any) {
+function transformModel(options, data: any) {
   const prop = (options.model && options.model.prop) || 'value'
   const event = (options.model && options.model.event) || 'input'
-  ;(data.attrs || (data.attrs = {}))[prop] = data.model.value
+    ; (data.attrs || (data.attrs = {}))[prop] = data.model.value
   const on = data.on || (data.on = {})
   const existing = on[event]
   const callback = data.model.callback

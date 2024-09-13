@@ -287,7 +287,7 @@ export function defineReactive(
       return value
     },
     set: function reactiveSetter(newVal) {
-      debugger
+      // debugger
       const value = getter ? getter.call(obj) : val // 获取旧值
       /* eslint-disable no-self-compare */
       // 值没有改变，或者前后的值为NaN，则不做处理
