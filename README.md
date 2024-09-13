@@ -347,17 +347,23 @@ Vue实例化时会根据传入的`options`参数初始化实例。在`options`�
 > 文件位置：[src/core/instance/lifecycle.js](./src/core/instance/lifecycle.js)
 
 与生命周期相关的属性的初始化：
-+ 增加$parent和$children属性，绑定父子关系，如果当前实例不是抽象的，则会将自身push至离自己最近的非抽象祖先组件的children中
-+ 添加$root的属性指向根元素，如果本身就是根元素则指向自身
-+ 增加$refs属性
-+ 增加_watcher（存放渲染Watcher）、_inactive（组件是否处于keepAlive）、_directInactive、_isMounted（是否已挂载）、_isDestroyed（是否已销毁）、_isBeingDestroyed（标记组件是否出于正在销毁的阶段）等属性
++ 增加`$parent`和`$children`属性，绑定父子关系，如果当前实例不是抽象的，则会将自身push至离自己最近的非抽象祖先组件的`$children`中，并将当前实例的`$parent`指向该父实例
++ 添加`$root`的属性指向根元素，如果本身就是根元素则指向自身
++ 增加`$refs`属性，初始值为空对象
++ 初始化其它与生命周期相关的属性：
+  -  `_watcher`：存放渲染Watcher
+  - `inactive`：组件是否处于keepAlive
+  - `_directInactive`：组件是否被直接设置成失活状态
+  - `_isMounted`：是否已挂载
+  - `_isDestroyed`：是否已销毁
+  - `_isBeingDestroyed`：标记组件是否出于正在销毁的阶段
 
 ### （三）initEvents
 > 文件位置：[src/core/instance/events.js](./src/core/instance/lifecycle.js)
 
 与事件相关的属性的初始化：
-+ 增加_events,_hasHookEvent，分别用于存放事件和标记是否有`hook:`事件
-+ 获取vm.$options._parentListeners，即父组件传递给子组件的事件，对子组件的事件进行更新，本质上是对vm.$options._parentListeners的新老事件（初始化时老事件为空）做了合并和封装，会对每一个事件创建一个调用者(invoker)，真实的回调则是放在了invoker.fns上，最后在vm上调用$on,$once,$off等绑定或者卸载事件。
++ 初始化`_events`,`_hasHookEvent`，分别用于存放事件和标记是否有`hook:`事件
++ 获取`vm.$options._parentListeners`，即父组件传递给子组件的事件，对子组件的事件进行更新，本质上是对`vm.$options._parentListeners`的新老事件（初始化时老事件为空）做了合并和封装，会对每一个事件创建一个调用者(`invoker`)，真实的回调则是放在了`invoker.fns`上
 
 > 创建的调用者在下次更新事件时，如果同一个事件已经创建过调用者了，则只更新新事件的引用；旧事件如果再更新时已经不存在了，则会卸载掉旧事件
 

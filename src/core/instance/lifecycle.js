@@ -62,7 +62,7 @@ export function initLifecycle(vm: Component) {
   vm.$children = []; // 用于存放子组件
   vm.$refs = {}; // $refs
 
-  // 其它与声明周期相关的属性初始化
+  // 其它与生命周期相关的属性初始化
   vm._watcher = null; // 渲染watcher
   vm._inactive = null; // 组件是否已失活
   vm._directInactive = false; // 是否直接被设置为失活
