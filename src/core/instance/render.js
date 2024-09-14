@@ -17,16 +17,16 @@ import VNode, { createEmptyVNode } from '../vdom/vnode'
 import { isUpdatingChildComponent } from './lifecycle'
 
 // 初始化与render相关的一些属性和方法
-export function initRender (vm: Component) {
+export function initRender(vm: Component) {
   vm._vnode = null // 子树的根节点
   vm._staticTrees = null // v-once cached trees v-once标记的组件渲染后的静态的树
   const options = vm.$options
   // 在父元素中的占位符
   // 解析到子组件时，会创建一个占位的父vnode
   // 这个vnode保存着各种组件的信息，如渲染上下文，children，Ctor，data等
-  const parentVnode = vm.$vnode = options._parentVnode 
+  const parentVnode = vm.$vnode = options._parentVnode
   const renderContext = parentVnode && parentVnode.context // 渲染上下文
- // 插槽处理，解析组件中插槽的内容
+  // 插槽处理，解析组件中插槽的内容
 
   // 非作用域插槽的内容处理
   // _renderChildren为组件内子节点组成的VNode数组，这个处理主要做几件事：
@@ -34,9 +34,9 @@ export function initRender (vm: Component) {
   // 2. 对VNode按照是否命名做了分组处理
   // 3. 对每一个分组，如果只包含空白的VNode节点，则删除该分支
   // 4. 最终会返回一个分组后的插槽对象，如{default: [VNode, VNode], footer: [VNode, VNode], header: [VNode]}
-  vm.$slots = resolveSlots(options._renderChildren, renderContext) 
+  vm.$slots = resolveSlots(options._renderChildren, renderContext)
   // 作用域插槽，初始化为空对象
-  vm.$scopedSlots = emptyObject 
+  vm.$scopedSlots = emptyObject
 
 
 
@@ -75,11 +75,11 @@ export function initRender (vm: Component) {
 export let currentRenderingInstance: Component | null = null // 当前渲染的组件实例
 
 // for testing only
-export function setCurrentRenderingInstance (vm: Component) {
+export function setCurrentRenderingInstance(vm: Component) {
   currentRenderingInstance = vm
 }
 
-export function renderMixin (Vue: Class<Component>) {
+export function renderMixin(Vue: Class<Component>) {
   // install runtime convenience helpers
   // 添加各种渲染相关的辅助方法
   installRenderHelpers(Vue.prototype)

@@ -17,7 +17,7 @@ import {
   validateProp
 } from '../util/index'
 
-export function FunctionalRenderContext (
+export function FunctionalRenderContext(
   data: VNodeData,
   props: Object,
   children: ?Array<VNode>,
@@ -73,7 +73,7 @@ export function FunctionalRenderContext (
   //  返回一个暴露传入的作用域插槽的对象。也以函数形式暴露普通插槽
   Object.defineProperty(this, 'scopedSlots', ({
     enumerable: true,
-    get () {
+    get() {
       return normalizeScopedSlots(data.scopedSlots, this.slots())
     }
   }: any))
@@ -108,7 +108,7 @@ installRenderHelpers(FunctionalRenderContext.prototype)
 // 1. 设置props
 // 2. 设置渲染上下文，传递给render函数
 // 3. 执行render函数生成VNode
-export function createFunctionalComponent (
+export function createFunctionalComponent(
   Ctor: Class<Component>, // 构造函数
   propsData: ?Object, // props数据
   data: VNodeData, // data
@@ -153,7 +153,7 @@ export function createFunctionalComponent (
   }
 }
 
-function cloneAndMarkFunctionalResult (vnode, data, contextVm, options, renderContext) {
+function cloneAndMarkFunctionalResult(vnode, data, contextVm, options, renderContext) {
   // #7817 clone node before setting fnContext, otherwise if the node is reused
   // (e.g. it was from a cached normal slot) the fnContext causes named slots
   // that should not be matched to match.
@@ -170,7 +170,7 @@ function cloneAndMarkFunctionalResult (vnode, data, contextVm, options, renderCo
 }
 
 // 合并props，所有的key会转为驼峰命名
-function mergeProps (to, from) {
+function mergeProps(to, from) {
   for (const key in from) {
     to[camelize(key)] = from[key]
   }

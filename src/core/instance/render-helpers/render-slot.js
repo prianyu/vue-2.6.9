@@ -5,7 +5,7 @@ import { extend, warn, isObject } from 'core/util/index'
 /**
  * Runtime helper for rendering <slot>
  */
-export function renderSlot (
+export function renderSlot(
   name: string,
   fallback: ?Array<VNode>,
   props: ?Object,

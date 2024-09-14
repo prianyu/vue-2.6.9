@@ -37,18 +37,18 @@ const sharedPropertyDefinition = {
 }
 // 设置属性代理
 // 将target[key]代理至target[sourceKey][key]
-export function proxy (target: Object, sourceKey: string, key: string) {
-  sharedPropertyDefinition.get = function proxyGetter () {
+export function proxy(target: Object, sourceKey: string, key: string) {
+  sharedPropertyDefinition.get = function proxyGetter() {
     return this[sourceKey][key]
   }
-  sharedPropertyDefinition.set = function proxySetter (val) {
+  sharedPropertyDefinition.set = function proxySetter(val) {
     this[sourceKey][key] = val
   }
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
 // 响应式数据实例化
-export function initState (vm: Component) {
+export function initState(vm: Component) {
   vm._watchers = [] // 存放观察者
   const opts = vm.$options
   // props初始化
@@ -71,7 +71,7 @@ export function initState (vm: Component) {
 
 // 初始化props
 // 在示例上增加_props属性，并将props数据的访问代理到vm._props上
-function initProps (vm: Component, propsOptions: Object) {
+function initProps(vm: Component, propsOptions: Object) {
   const propsData = vm.$options.propsData || {} // 从父组件接收到的props数据
   const props = vm._props = {} // 添加_props属性用于存储props
   // cache prop keys so that future props updates can iterate using Array
@@ -85,7 +85,7 @@ function initProps (vm: Component, propsOptions: Object) {
   // 子组件的props通常来自父组件的data，data会被转为响应式对象，无需重复观察
   if (!isRoot) {
     toggleObserving(false)
-  } 
+  }
   for (const key in propsOptions) {
     keys.push(key) // 缓存key
     // 值的合法性检测并获取值
@@ -97,7 +97,7 @@ function initProps (vm: Component, propsOptions: Object) {
       // 保留属性（key,ref,slot,slot-scope,is及其它自定义的保留属性）检测
       const hyphenatedKey = hyphenate(key)
       if (isReservedAttribute(hyphenatedKey) ||
-          config.isReservedAttr(hyphenatedKey)) {
+        config.isReservedAttr(hyphenatedKey)) {
         warn(
           `"${hyphenatedKey}" is a reserved attribute and cannot be used as component prop.`,
           vm
@@ -140,7 +140,7 @@ function initProps (vm: Component, propsOptions: Object) {
 // 2. 方法名、属性名冲突检测
 // 3. 在实例上的data属性的访问代理到vm._data上
 // 4. 观察data，将data转换为响应式对象
-function initData (vm: Component) {
+function initData(vm: Component) {
   let data = vm.$options.data
   // data可以为对象也可以为返回对象的函数
   // 获取后不是对象将被置为空对象
@@ -159,7 +159,7 @@ function initData (vm: Component) {
   // proxy data on instance
   // 代理属性及属性名冲突检测
   const keys = Object.keys(data) // 获取所有的key
-  const props = vm.$options.props 
+  const props = vm.$options.props
   const methods = vm.$options.methods
   let i = keys.length
   while (i--) {
@@ -193,7 +193,7 @@ function initData (vm: Component) {
 
 // 获取data
 // data为函数时，传入当前实例执行data，返回值作为data
-export function getData (data: Function, vm: Component): any {
+export function getData(data: Function, vm: Component): any {
   // #7573 disable dep collection when invoking data getters
   /**
    * bug修复的解析
@@ -232,7 +232,7 @@ export function getData (data: Function, vm: Component): any {
 const computedWatcherOptions = { lazy: true }
 
 // 初始化computed，添加计算属性观察者并将计算属性转为getter/setter
-function initComputed (vm: Component, computed: Object) {
+function initComputed(vm: Component, computed: Object) {
   // $flow-disable-line
   const watchers = vm._computedWatchers = Object.create(null) // 创建计算属性的watcher对象
   // computed properties are just getters during SSR
@@ -264,7 +264,7 @@ function initComputed (vm: Component, computed: Object) {
     // component prototype. We only need to define computed properties defined
     // at instantiation here.
     // 使用Vue.extend创建的子类构造函数传入的computed选项已经定义在了原型上，无需重复定义
-    if (!(key in vm)) { 
+    if (!(key in vm)) {
       // 遍历实例上的计算属性，computed名称不能与data、props、methods已经内置的一些属性同名
       defineComputed(vm, key, userDef)
     } else if (process.env.NODE_ENV !== 'production') {
@@ -280,7 +280,7 @@ function initComputed (vm: Component, computed: Object) {
 
 // 在实例上定义计算属性
 // 计算属性会被转为getter/setter
-export function defineComputed (
+export function defineComputed(
   target: any,
   key: string,
   userDef: Object | Function
@@ -292,7 +292,7 @@ export function defineComputed (
       ? createComputedGetter(key) // 创建具有缓存的作用的计算属性getter方法
       : createGetterInvoker(userDef) // 创建不具有缓存的计算属性getter方法
     sharedPropertyDefinition.set = noop
-  } else { 
+  } else {
     // 定义的属性为对象，从中解析出setter和getter
     sharedPropertyDefinition.get = userDef.get
       ? shouldCache && userDef.cache !== false
@@ -304,7 +304,7 @@ export function defineComputed (
 
   // 没有显式声明setter的话，计算属性是不能被手动赋值的
   if (process.env.NODE_ENV !== 'production' &&
-      sharedPropertyDefinition.set === noop) {
+    sharedPropertyDefinition.set === noop) {
     sharedPropertyDefinition.set = function () {
       warn(
         `Computed property "${key}" was assigned to but it has no setter.`,
@@ -318,8 +318,8 @@ export function defineComputed (
 
 
 // 创建具有缓存作用的计算属性的getter函数
-function createComputedGetter (key) {
-  return function computedGetter () {
+function createComputedGetter(key) {
+  return function computedGetter() {
     // 获取对应计算属性的watcher
     const watcher = this._computedWatchers && this._computedWatchers[key]
     if (watcher) {
@@ -351,7 +351,7 @@ function createComputedGetter (key) {
 
 // 服务端渲染的计算属性getter方法
 function createGetterInvoker(fn) {
-  return function computedGetter () {
+  return function computedGetter() {
     // 假如这里依赖data或者prop，执行时候会触发其get方法，进行依赖收集
     // 这里与createComputedGetter不同，不需要再执行watcher.depend()
     // 因为每一次都会求值，执行属性依赖的getter时，会触发依赖收集，由于此时没有执行watcher.evaluate，
@@ -362,7 +362,7 @@ function createGetterInvoker(fn) {
 
 
 // methods初始化，将method的上下文绑定为当前vue实例
-function initMethods (vm: Component, methods: Object) {
+function initMethods(vm: Component, methods: Object) {
   const props = vm.$options.props
   for (const key in methods) {
     // 合法性检测
@@ -397,7 +397,7 @@ function initMethods (vm: Component, methods: Object) {
 
 // watch初始化
 // watcher是可以为数组的，多个watcher会按顺序被调用
-function initWatch (vm: Component, watch: Object) {
+function initWatch(vm: Component, watch: Object) {
   for (const key in watch) {
     const handler = watch[key]
     if (Array.isArray(handler)) { // watcher是数组，遍历后定义
@@ -413,14 +413,14 @@ function initWatch (vm: Component, watch: Object) {
 // 创建watcher
 // watcher可以是一个函数，也可以是一个带有handler属性对象，也可以是methods上的函数名字符串
 // 以上会被转化为统一的格式，最终调用实例上的$watch方法创建watcher
-function createWatcher (
+function createWatcher(
   vm: Component,
   expOrFn: string | Function,
   handler: any,
   options?: Object
 ) {
   // handle是对象，则取handler.handle属性作为回调函数
-  if (isPlainObject(handler)) { 
+  if (isPlainObject(handler)) {
     options = handler // 选项重载
     handler = handler.handler
   }
@@ -434,7 +434,7 @@ function createWatcher (
 // 与状态相关的一些属性和方法定义
 // 添加$data和$props分别代理至_data和_props
 // 添加$set、$delete和$watch方法
-export function stateMixin (Vue: Class<Component>) {
+export function stateMixin(Vue: Class<Component>) {
   // flow somehow has problems with directly declared definition object
   // when using Object.defineProperty, so we have to procedurally build up
   // the object here.
@@ -473,7 +473,7 @@ export function stateMixin (Vue: Class<Component>) {
     // cb是对象，则使用crreateWatcher方法创建watcher
     // craeteWatcher会先规范化参数后再调用vm.$watch方法创建watcher
     // 最终等价于vm.$watch(expOrFn, cb.handler, cb)
-    if (isPlainObject(cb)) { 
+    if (isPlainObject(cb)) {
       return createWatcher(vm, expOrFn, cb, options)
     }
     options = options || {}
@@ -487,7 +487,7 @@ export function stateMixin (Vue: Class<Component>) {
       }
     }
     // 返回一个卸载watcher的函数
-    return function unwatchFn () {
+    return function unwatchFn() {
       watcher.teardown()
     }
   }

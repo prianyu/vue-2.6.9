@@ -5,7 +5,7 @@ import { normalizeChildren } from 'core/vdom/helpers/normalize-children'
 import { emptyObject } from 'shared/util'
 
 // 规范化插槽
-export function normalizeScopedSlots (
+export function normalizeScopedSlots(
   slots: { [key: string]: Function } | void, // 分组的作用域插槽节点集合
   normalSlots: { [key: string]: Array<VNode> }, // 分组的普通插槽节点函数集合
   prevSlots?: { [key: string]: Function } | void
@@ -65,7 +65,7 @@ function normalizeScopedSlot(normalSlots, key, fn) {
     res = res && typeof res === 'object' && !Array.isArray(res) //执行结果为VNode或者VNode数组
       ? [res] // single vnode 只有一个则转为数组
       : normalizeChildren(res) // 对子元素做规范化处理
-      // 最终会返回VNode节点
+    // 最终会返回VNode节点
     return res && (
       res.length === 0 ||
       (res.length === 1 && res[0].isComment) // #9658

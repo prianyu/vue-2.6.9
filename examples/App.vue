@@ -12,7 +12,9 @@
         <!-- CSS scoped -->
         <!-- <CssScope /> -->
         <!-- class合并 -->
-        <MergeClass class="outer"/>
+        <!-- <MergeClass class="outer"/> -->
+        <!-- slot resolve -->
+        <SlotComponent />
     </div>
 </template>
 <script>
@@ -23,6 +25,7 @@ import CustomSetterGetter from './components/CustomSetterGetter.vue';
 import HOC from './components/HOC.vue';
 import CssScope from './components/CssScope.vue';
 import MergeClass from './components/MergeClass.vue';
+import SlotComponent from './components/SlotComponent.vue';
 export default {
     components: {
         TemplateRender, CustomRender,
@@ -31,6 +34,7 @@ export default {
         HOC,
         CssScope,
         MergeClass,
+        SlotComponent
     }
 
 }

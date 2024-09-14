@@ -9,7 +9,7 @@ import type VNode from 'core/vdom/vnode'
  * children为组件内子节点组成的VNode数组，这个处理主要做几件事：
   1. 删除VNode上的data.attrs.slot属性
   2. 对VNode按照是否命名做了分组处理
-  3. 对每一个分组，如果只包含空白的VNode节点，则删除该分支
+  3. 对每一个分组，如果只包含空白的VNode节点，则删除该分组
   4. 最终会返回一个分组后的插槽对象，如{default: [VNode, VNode], footer: [VNode, VNode], header: [VNode]}
  * 实例代码： 
     <div id="app">
@@ -27,10 +27,11 @@ import type VNode from 'core/vdom/vnode'
       header: [VNode]
     }
  */
-export function resolveSlots (
+export function resolveSlots(
   children: ?Array<VNode>, // 组件的子节点创建的vnode数组
-  context: ?Component // 组件所处的上下文, #app
+  context: ?Component // 组件所处的上下文
 ): { [key: string]: Array<VNode> } {
+  // debugger
   if (!children || !children.length) {
     return {}
   }
@@ -47,8 +48,8 @@ export function resolveSlots (
     }
     // named slots should only be respected if the vnode was rendered in the
     // same context.
-    // 命名插槽只有在当vnode处于同一上下文时才考虑处理
-    //  @suspense
+    // 命名插槽只有在的上下文与渲染上下文一致时才保留
+    // 这是处理一些罕见的极端场景，如不同上下文的createElement函数创建的插槽
     if ((child.context === context || child.fnContext === context) &&
       data && data.slot != null
     ) {// 命名插槽，如slot="header"
@@ -73,7 +74,7 @@ export function resolveSlots (
   return slots
 }
 
-function isWhitespace (node: VNode): boolean {
+function isWhitespace(node: VNode): boolean {
   // 异步组件创建的也是空白的占位节点，所以要排除掉
   return (node.isComment && !node.asyncFactory) || node.text === ' '
 }
