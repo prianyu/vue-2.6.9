@@ -16,8 +16,10 @@ import {
 
 // 对比新老节点更新class到真实DOM上面
 // 1. 新老接待你都没有class属性，则不处理
-// 2. 
-function updateClass (oldVnode: any, vnode: any) {
+// 2. 规范化动态class，并与静态的class合并
+// 3. 合并transition-class
+// 4. 将class字符串设置到DOM节点上
+function updateClass(oldVnode: any, vnode: any) {
   const el = vnode.elm
   const data: VNodeData = vnode.data
   const oldData: VNodeData = oldVnode.data
@@ -40,8 +42,8 @@ function updateClass (oldVnode: any, vnode: any) {
 
   // handle transition classes
   // 如果有transition组件的class则拼接
-  const transitionClass = el._transitionClasses 
-  if (isDef(transitionClass)) { 
+  const transitionClass = el._transitionClasses
+  if (isDef(transitionClass)) {
     cls = concat(cls, stringifyClass(transitionClass))
   }
 

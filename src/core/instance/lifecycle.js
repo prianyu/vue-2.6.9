@@ -79,7 +79,7 @@ export function lifecycleMixin(Vue: Class<Component>) {
     const vm: Component = this;
     const prevEl = vm.$el; // 当前实例老的根DOM节点，根节点初次渲染时是页面的挂载点
     const prevVnode = vm._vnode; // 老的VNode
-    const restoreActiveInstance = setActiveInstance(vm); //切换当前激活的实例
+    const restoreActiveInstance = setActiveInstance(vm); // 切换当前激活的实例
     vm._vnode = vnode; // 更新虚拟节点，由render函数生成的准备更新渲染的新的VNode
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.

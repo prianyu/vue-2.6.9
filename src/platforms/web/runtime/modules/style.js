@@ -4,6 +4,10 @@ import { getStyle, normalizeStyleBinding } from 'web/util/style'
 import { cached, camelize, extend, isDef, isUndef, hyphenate } from 'shared/util'
 // style属性处理
 //----------------create/update钩子----------
+// 1. 规范化动态style
+// 2. 将静态是style和动态的style合并
+// 3. 合并父子组件（嵌套组件）的样式
+// 4. 根据新的style结果删除旧的样式和设置新的样式
 
 const cssVarRE = /^--/ // CSS变量名前缀
 const importantRE = /\s*!important$/ // !important样式后缀
@@ -60,7 +64,7 @@ const normalize = cached(function (prop) {
 // 1. 合并嵌套组件中父子组件的样式
 // 2. 将不存在于新 样式中的旧样式置空
 // 3. 遍历新的样式修改或设置样式到DOM
-function updateStyle (oldVnode: VNodeWithData, vnode: VNodeWithData) {
+function updateStyle(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const data = vnode.data
   const oldData = oldVnode.data
 

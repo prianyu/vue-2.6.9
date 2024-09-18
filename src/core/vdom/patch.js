@@ -76,14 +76,6 @@ function createKeyToOldIdx(children, beginIdx, endIdx) {
 // 创建patch函数的工厂函数
 // 解析平台的所有模块及其钩子，将所有的钩子按照钩子名称分组后按顺序存储
 // 返回一个patch函数
-/**
- * patch函数
- * @param {VNode} oldVnode 旧的虚拟DOM
- * @param {VNode} vnode 新的的虚拟DOM
- * @param {Boolean} hydrating 是否为服务端渲染
- * @param {Boolean} removeOnly 是否
- * @returns
- */
 export function createPatchFunction(backend) {
   let i, j;
   const cbs = {}; // 用于存放各种钩子回调
@@ -1231,6 +1223,7 @@ export function createPatchFunction(backend) {
 
         // update parent placeholder node element, recursively
         // 如果根节点被替换（如v-if），递归遍历更新父级占位节点
+        // 递归更新父占位符节点元素
         //@suspense
         if (isDef(vnode.parent)) {
           let ancestor = vnode.parent;

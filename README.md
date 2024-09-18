@@ -86,7 +86,7 @@ src
 
 **（1） 调用`initGlobalAPI(Vue)`，在Vue构造函数上增加全局的各种静态属性和方法。**
 
-> [./src/core/globala-api/index.js](./src/core/globala-api/index.js)
+> [./src/core/global-api/index.js](./src/core/globala-api/index.js)
 
 + `delete`, `set`, `nextTick`, `observable`等静态方法
 + `util`静态属性（含`warn`, `extend`, `mergeOptions`, `defineReactive`等工具方法）
@@ -258,7 +258,7 @@ Vue实例化时会根据传入的`options`参数初始化实例。在`options`�
   inject: {
     age: 'myAge',
     name: {
-      from: 'fullname',
+      from: 'fullName',
       default: '张三',
       //...others
     },
@@ -272,7 +272,7 @@ Vue实例化时会根据传入的`options`参数初始化实例。在`options`�
   inject: {
     age: { from: 'myAge' },
     name: {
-      from: 'fullname',
+      from: 'fullName',
       default: '张三',
       // ...others
     },
@@ -469,29 +469,30 @@ vm.$slots = {
 处理计算属性`$options.computed`：
 + 增加`vm.__computedWatchers`对象属性，用于存放所有**计算属性的watcher**
 + 遍历`$options.computed`创建惰性求值（`{lazy: true}`）的`watcher`并存至`vm.__computedWatchers`
-  ```javascript
-  const computedWatcherOptions = { lazy: true }
-  const watchers = vm.__computedWatchers
-  const useDef = computed[key]
-  const getter = typeof userDef === 'function' ? userDef : userDef.get
-  watchers[key] = new Watcher(
-    vm,
-    getter || noop,
-    noop,
-    computedWatcherOptions // 计算属性的wather是懒加载的
-  )
-  ```
 + 在`vm`上添加对应的`computed`属性
   - 解析得到`setter`和`getter`，定义描述对象，getter会根据是否缓存定义不同，如果无需缓存则将定义的回调的上下文绑定到vm既可；如果有缓存则会根据值是否改变从`watcher`中计算得到值，在这里会进行渲染watcher的依赖收集。
   - 并在使用`Object.defineProperty`在vm上添加对应的`computed`属性
   - 如果没有`setter`，则会设置默认的`setter`，默认`setter`在改变`computed`的值会给出不可直接修改的提醒
 + 检测是否有同名的`data`和`prop`属性
 
+```javascript
+const computedWatcherOptions = { lazy: true }
+const watchers = vm.__computedWatchers
+const useDef = computed[key]
+const getter = typeof userDef === 'function' ? userDef : userDef.get
+watchers[key] = new Watcher(
+  vm,
+  getter || noop,
+  noop,
+  computedWatcherOptions // 计算属性的watcher是懒加载的
+)
+```
+
 **（5） initWatch**
 
 初始化`$options.watch`：
 + 遍历`watch`，根据配置执行`createWatcher`函数，如果是数组则会遍历执行`createWatcher`，最终按顺序执行`watcher`
-+ `createWacher`会执行`vm.$watch`
++ `createWatcher`会执行`vm.$watch`
 + `$watch`最终会调用`new Watcher(...)`创建用户`watcher`，如果是立即执行的则会立即执行回调
 + 创建后会返回一个取消检测的方法`unwatchFn`，用于取消监测
 
@@ -502,7 +503,6 @@ vm.$slots = {
 + 将获取的值放到`vm._provided`属性上
 
 ## 三、组件挂载
-
 
 ### （一）挂载方法
 
@@ -605,6 +605,49 @@ vm = {
 + 将激活的实例恢复到上一个激活的实例
 + 删除旧的DOM节点对组件实例的引用，新的DOM节点添加组件实例的引用(即`__vue__`属性，一些插件使用)
 + 如果当前组件是父组件的根元素（即父组件是高阶组件），则同步更新父组件的`$el`属性
+
+
+### （四）`vm.__patch__`方法与Diff算法
+
+> 文件位置: [src/platform/web/runtime/index.js](./src/platforms/web/runtime/index.js)
+
+`__patch__`方法是**Diff算法**的入口，它通过给定的`oldVnode`和`newVnode`，比较新老两个节点得到需要更新的DOM，以打补丁的方式将DOM更新。期间会调用`patchVnode`函数，该函数是**Diff算法**的核心。
+
+`__patch__`方法是由`createPatchFunction`创建的，`createPatchFunction`是**Vue**在内部定义了一个与平台无关的用于创建指定平台的`patch`函数的工厂函数。该函数接收一个包含指定平台操作模块（`modules`）和节点操作方法（`nodeOps`）的对象，生成一个`patch`函数。其中模块包括了基础模块和平台特定的模块，每一个模块都包含了`vnode`节点的钩子函数，在patch的过程中，在适当的时机被调用。而`nodeOps`则是用来管理节点的方法集合，如在浏览器环境下DOM节点的增删查改操作。
+
+**（1）模块**
+
+在浏览器环境下，基础模块和平台模块的列表如下：
+
++ 基础模块：
+  + ref模块：用来处理vnode的ref属性，在patch过程中，更新`vm.$refs`
+  + directive模块：用来处理指令，对指令的名称、修饰符等进行规范化，在patch过程中，对指令进行更新
++ 平台模块：
+  + attrs模块：从`vnode.data.attrs`提取属性，对属性进行设置、更新、删除等操作，如果实例的构造函数具有`inheritAttrs: false`属性则不做处理
+  + class模块: 处理`class`属性，规范化动态的`class`并与静态的`class`进行合并，如果有`transition-class`则合并，将最终得到的`class`字符串设置到DOM元素上
+  + domProps模块：处理原生的DOM属性，如`value`,`innerHTML`等，还处理了相关属性在各种浏览器的兼容问题
+  + style模块：处理`style`属性， 在`style`更新时，规范化动态的`style`，并与静态的`style`、父组件（嵌套组件）的`style`合并，根据最新的`style`结果删除旧的样式并设置新的样式
+  + transition模块：用于处理元素进入退出过渡效果。根据配置的样式、钩子，在合适的时机添加、删除样式，在合适的时机调用钩子函数
+
+  **（2）__patch__方法**
+
+  > 以下`vnode`是新的节点，`oldVnode`是老的节点
+
+  + 如果`vnode`空，则递归执行`oldVnode`上的销毁钩子函数
+  + 否则，如果`oldVnode`为空，则标记为初次patch，使用`vnode`创建新元素插入父元素。这种情况是子组件的初次渲染，期间会调用`createComponent`方法，实例化组件并执行子组件的相关钩子
+  + 否则，就是新老节点都存在的情况：
+    +  如果`oldVnode`不是真实DOM（非根节点挂载）且新老节点不同，则调用`patchVNode`函数对新老节点进行diff操作并更新DOM
+    + 否则，如果`oldVnode`是真实DOM，则将`oldVnode`设置为空的`vnode`并设置其`elm`属性为该真实DOM
+    + 获取老节点对应的真实的DOM的父节点
+    + 使用`vnode`创建一个DOM元素插入到获取到的父DOM的后面（初始挂载时，此时页面会存在两个真实的DOM）
+    + 删除老节点对应的真实DOM，执行销毁钩子函数
+  + patch完毕后会执行所有的`insert`钩子函数
+  + 返回最终创建的真实DOM
+
+  在以上的过程中，内部会有一个`insertedVnodeQueue`贯穿整个流程存储要被插入的所有`vnode`节点，直到patch工作完成，意味着DOM元素被插入了，则遍历所有的`vnode`节点，执行`insert`钩子函数。
+
+
+  **（3）patchVnode函数**
 
 
 
