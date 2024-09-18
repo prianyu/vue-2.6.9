@@ -113,7 +113,7 @@ export function lifecycleMixin(Vue: Class<Component>) {
     if (vm.$vnode && vm.$parent && vm.$vnode === vm.$parent._vnode) {
       vm.$parent.$el = vm.$el;
     }
-    // upadted钩子由调度器来调用，确保子组件在父组件的updated钩子执行前已经更新完毕
+    // updated钩子由调度器来调用，确保子组件在父组件的updated钩子执行前已经更新完毕
     // updated hook is called by the scheduler to ensure that children are
     // updated in a parent's updated hook.
   };
@@ -255,7 +255,7 @@ export function mountComponent(
     noop,
     {
       before() {
-        // 更新前，判断是否已经挂载过，如果挂载过了就执行beforeUpate钩子
+        // 更新前，判断是否已经挂载过，如果挂载过了就执行beforeUpdate钩子
         if (vm._isMounted && !vm._isDestroyed) {
           callHook(vm, "beforeUpdate");
         }

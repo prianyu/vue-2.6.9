@@ -99,10 +99,10 @@ export function renderMixin(Vue: Class<Component>) {
     const { render, _parentVnode } = vm.$options
 
     // 规范化插槽
-    // _parentVnode不为空，说明是子组件（使用VueComponent创建过来的）
+    // _parentVnode不为空，说明是子组件（Vue.extend创建过来的）
     // 对其插槽做规范化处理
-    // 走到这里，vm.$slots在initRender的时候已经做了分组处理，
-    // 而vm.$scopedSlots初始化时为空对象，后续则作为上一次的执行结果
+    // 走到这里，初始化时vm.$slots在initRender的时候已经做了分组处理，
+    // 而vm.$scopedSlots初始化时为空对象，更新时则为则作为上一次的处理结果
     // _parentVnode.data.scopedSlots则也是已经分组的作用域插槽节点的集合(函数)
     // 处理完成后$slots和$scopedSlots都包含了所有的插槽，其中$scopedSlots是以函数的形式存储的插槽
     if (_parentVnode) {
@@ -124,8 +124,8 @@ export function renderMixin(Vue: Class<Component>) {
       // separately from one another. Nested component's render fns are called
       // when parent component is patched.
       // 所有的render函数都是单独调用的，
-      // 而所有的嵌套组件的render都会在父组件patch时执行
-      // 因此无需维护一个栈
+      // 而所有的嵌套组件的render函数都会在父组件patch时才执行，
+      // 彼时又会重新设置currentRenderContext，因此无需维护一个栈
       currentRenderingInstance = vm // 标记当前正在渲染的组件实例
       // 调用render函数，接收的参数为vm.$createElement函数
       // vm._renderProxy一般就是vm
@@ -152,12 +152,12 @@ export function renderMixin(Vue: Class<Component>) {
       currentRenderingInstance = null
     }
     // if the returned array contains only a single node, allow it
-    // 仅允许返回一个节点
+    // 只包含一个元素的vnode数组是允许的
     if (Array.isArray(vnode) && vnode.length === 1) {
       vnode = vnode[0]
     }
     // return empty vnode in case the render function errored out
-    // 多个根节点
+    // vnode是多个根节点
     if (!(vnode instanceof VNode)) {
       if (process.env.NODE_ENV !== 'production' && Array.isArray(vnode)) {
         warn(
@@ -169,8 +169,8 @@ export function renderMixin(Vue: Class<Component>) {
       vnode = createEmptyVNode()
     }
     // set parent
-    // 绑定父子关系vnode.parent = vm.$vnode
-    // vm._vnode = vnode
+    // 绑定父子关系
+    // 等价于vnode.parent = vm.$vnode
     vnode.parent = _parentVnode
     return vnode
   }

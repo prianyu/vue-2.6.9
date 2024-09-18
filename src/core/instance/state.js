@@ -470,8 +470,8 @@ export function stateMixin(Vue: Class<Component>) {
     options?: Object
   ): Function {
     const vm: Component = this
-    // cb是对象，则使用crreateWatcher方法创建watcher
-    // craeteWatcher会先规范化参数后再调用vm.$watch方法创建watcher
+    // cb是对象，则使用createWatcher方法创建watcher
+    // createWatcher会先规范化参数后再调用vm.$watch方法创建watcher
     // 最终等价于vm.$watch(expOrFn, cb.handler, cb)
     if (isPlainObject(cb)) {
       return createWatcher(vm, expOrFn, cb, options)

@@ -503,38 +503,63 @@ vm.$slots = {
 
 ## 三、组件挂载
 
+
+### （一）挂载方法
+
+挂载`Vue`组件时，可以手动调用`vm.$mount(el)`，也可以通过`new Vue({el: '#app'})`的方式挂载。传入`el`选项实际上也是调用了`vm.$mount(el)`。在具有compiler的版本中，`$mount`函数会解析模板生成`render`函数，然后在调用`mountComponent`函数进行挂载。没有compiler的版本则直接调用`mountComponent`函数。
+
+**（1）模板编译**
+
+> 文件位置：[src/platform/web/entry-runtime-with-compiler.js](./src/platform/web/entry-runtime-with-compiler.js)
+
+如果没有`render`函数，则会根据以下步骤生成`render`函数：
+
++ 如果有`template`配置：
+  + 如果`template`是DOM节点或者是`#`开头的字符串（认为是DOM的id），则获取该节点的`innerHTML`作为待编译的模板
+  + 如果以上条件不成立，则提示错误终止挂载
++ 如果没有`template`但是有`el`，则将`el`的`outerHTML`作为待编译的模板
++ 经过以上处理后`template`可能是遗传html或者空字符串，如果不是空字符串则做如下处理：
+  + 调用`compileToFunctions`函数对模板进行编译得到`render`和`staticRenderFns`函数
+  + 将得到的两个函数添加到`options`上
+
+模板编译生成`render`和`staticRenderFns`函数后就进入挂载阶段。
+
+`template`选项之所以使用`innerHTML`，`el`选项使用`outerHTML`的原因是：`template`被认为是存放模板的元素，它本身可能不是一个可渲染的元素，如模板的`x-template`语法（`<script type="x-template" id="template"></script>`）。另外，传入的`template`后通常需要手动挂载到指定的`el`上。而`el`本身在挂载时会被作为挂载元素，是一个可渲染的元素。
+
+
+**（2）`mountComponent`函数**
 > 文件位置：[src/core/instance/lifecycle.js](./src/core/instance/lifecycle.js)
 调用`mountComponent(vm, el)`函数：
-+ 将el赋值给vm.$el，此时vm.$el为原始的DOM节点
-+ 如果没有找到render函数，但是传了template或者el，给出使用runtime-only的编译版本的提示，同时会将render赋值为创建空节点函数
-+ callHook(vm, 'beforeMount')：执行beforeMount钩子
-+ 定义了updateComponent函数用于更新组件
-  - 执行vm._update(vm._render(), hydrating)，即先生成虚拟DOM，再更新成真实的DOM
-+ 实例化渲染Watcher，new Watcher(vm, updateComponent, noop, {before () {...}}, true /* isRenderWatcher */)
-  - watcher的before钩子里会判断组件是否被挂载过，如果挂在过则执行beforeUpdate钩子
++ 将`el`赋值给`vm.$el`，此时`vm.$el`为原始的DOM节点
++ 如果没有找到`render函数`，则将`render`设置为创建空节点函数，如果传了`template`或者`el`，则给出使用**runtime-only**的编译版本的提示
++ 执行beforeMount钩子`callHook(vm, 'beforeMount')`
++ 定义了`updateComponent`函数用于更新组件，内部执行`vm._update(vm._render(), hydrating)`，即先生成虚拟DOM，再更新成真实的DOM
++ 实例化渲染`Watcher`: `new Watcher(vm, updateComponent, noop, {before () {...}}, true)`
+  - watcher的before钩子里会判断组件是否被挂载过，如果挂在过则执行`beforeUpdate`钩子
   - watcher在初始化和数据变化时会执行回调函数
-+ 将组件标记为已挂在（vm._isMounted=true），并执行mounted钩子
++ 将组件标记为已挂在（`vm._isMounted=true`），并执行`mounted`钩子
 
-### （一）. prototype._render
+### （二） `prototype._render`方法
 
-作用：将组件实例渲染成一个VNode
+> 文件位置：[src/core/instance/render.js](./src/core/instance/render.js)
 
-+ 获取$options上的render函数和_parentVnode
-+ 规范化作用域插槽，在initRender的时候$slots已经按名称了做了归类，$scopedSlots则为空对象，经过_render处理，$slots和$scopedSlots均包含了所有的插槽（作用插槽和普通插槽）,其中$scopedSlots是使用函数的形式的存储，同时具有$hasNormal、$stable、$key，_normalize等属性
-+ vm.$vnode指向_parentVnode，这样提供了一个让render函数访问占位节点的上下文环境
-+ 调用render函数生成虚拟DOM，接收的参数为vm.$createElement函数，将虚拟DOM结果赋值给vnode（渲染失败会返回vm._vnode，即上一次生成的虚拟节点）
-+ vnode.parent = _parentNode，绑定父子关系，vnode.parent = vm.$vnode
-+ 返回最终的vnode，vm._vnode = vnode
+`_render`方法用于将组件实例渲染成一个`VNode`
+
++ 规范化作用域插槽，根据`vm.$slots`、`vm.$scopedSlots`和`data.scopedSlots`规范化插槽，得到的结果重新复制给`vm.$scopedSlots`。其中，在`initRender`的时候`$slots`已经按名称了做了归类，`$scopedSlots`则为空对象，经过`_render`处理，`$slots`和$`scopedSlots`均包含了所有的插槽（作用插槽和普通插槽）,其中`$scopedSlots`是使用函数的形式的存储，同时具有`$hasNormal`、`$stable`、`$key`，`_normalize`等属性
++ 将`vm.$options._parentNode`赋值给`vm.$vnode`，这样提供了一个让render函数访问占位节点的上下文环境
++ 将`currentRenderingInstance`设置为当前实例并尝试调用`render函数`生成`vnode`，接收的参数为`vm.$createElement`函数，执行失败时会设置为上一次的`vnode`结果
++ 渲染函数执行完将`currentRenderingInstance`设置为`null`
++ 只保留一个根`vnode`节点，如果有多个根节点则将`vnode`重置为空节点
++ 将`_parentNode`保存到`vnode.parent`，绑定父子关系，等价于`vnode.parent = vm.$vnode`
++ 返回最终的`vnode`
   
-_render过程中添加的vm.$vnode、_update过程中添加的vm._vnode、vm.$options._parentVnode有如下关系。
+`_render`方法执行后中添加了`vm.$vnode`、后续`_update`时添加的`vm._vnode`，两者与`vm.$options._parentVnode`有如下关系。
 
 ```javascript
-vm.$options._parentNode === vm.$vnode
+vm.$options._parentNode === vm.$vnode // 组件占位符节点
 vm.$vnode === vm._vnode.parent
 ```
 其中`vm._vnode`就是render函数的执行结果
-
-例子：
 
 ```javascript
 Vue.component("custom", {
@@ -567,9 +592,19 @@ vm = {
 }
 ```
 
-### （二）vm._update
+### （三）`vm._update`方法
 
+> 文件位置：[src/core/instance/lifecycle.js](./src/core/instance/lifecycle.js)
 
+`_update`方法用于将新的虚拟节点`vnode`更新到页面中，通过调用`__patch__`方法对比新旧节点，生成Diff DOM然后更新页面的真实DOM，并将真实DOM存放到`vm.$el`中。不像`vm._render`方法，`_update`在嵌套组件patch的过程中是一个深度遍历的过程，所以设置激活实例的时候需要维护一个实例栈。
+
++ 获取实例的老的`_vnode`和`$el`
++ 设置激活的实例为当前组件实例
++ 将`vm._vnode`设置为新的`vnode`
++ 调用`vm.__patch__`方法进行新老节点的对比，将patch的结果保存到`vm.$el`。如果组件是初次渲染，会将`vm.$el`作为`__patch__`方法的老节点参数传入，因此会有一次DOM替换的过程。
++ 将激活的实例恢复到上一个激活的实例
++ 删除旧的DOM节点对组件实例的引用，新的DOM节点添加组件实例的引用(即`__vue__`属性，一些插件使用)
++ 如果当前组件是父组件的根元素（即父组件是高阶组件），则同步更新父组件的`$el`属性
 
 
 
