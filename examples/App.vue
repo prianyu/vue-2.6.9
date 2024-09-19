@@ -14,7 +14,9 @@
         <!-- class合并 -->
         <!-- <MergeClass class="outer"/> -->
         <!-- slot resolve -->
-        <SlotComponent />
+        <!-- <SlotComponent /> -->
+        <!-- lifecycle patch hooks -->
+        <Button />
     </div>
 </template>
 <script>
@@ -26,6 +28,7 @@ import HOC from './components/HOC.vue';
 import CssScope from './components/CssScope.vue';
 import MergeClass from './components/MergeClass.vue';
 import SlotComponent from './components/SlotComponent.vue';
+import Button from './components/Button.vue';
 export default {
     components: {
         TemplateRender, CustomRender,
@@ -34,7 +37,8 @@ export default {
         HOC,
         CssScope,
         MergeClass,
-        SlotComponent
+        SlotComponent,
+        Button
     }
 
 }

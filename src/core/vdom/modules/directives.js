@@ -27,6 +27,7 @@ function _update(oldVnode, vnode) {
   const isCreate = oldVnode === emptyNode; // 标记是否为创建指令
   const isDestroy = vnode === emptyNode; // 标记是否为销毁指令
   // 走到这里，如果vnode上有指令，类似的格式如下： [{name: "focus", rawName: "v-focus"}]
+  // 规范化为： {rawName: {name: "focus", rawName: "v-focus", def: fn, modifiers: {...}}的格式
   const oldDirs = normalizeDirectives(
     oldVnode.data.directives,
     oldVnode.context
@@ -47,29 +48,35 @@ function _update(oldVnode, vnode) {
     oldDir = oldDirs[key];
     dir = newDirs[key];
     if (!oldDir) {
-      // 老节点没有该指令，进行绑定
       // new directive, bind
+      // 新的指令则执行bind钩子
       callHook(dir, "bind", vnode, oldVnode); // 执行节点的bind钩子
+      // mark#inserted
+      // 有inserted钩子时，存储该钩子
+      // 这里可以看出，只有当旧的指令中不存在的新指令才会被添加到dirsWithInsert
+      // 而后面在dirsWithInsert存在时又会将inserted钩子合并到data.hook.insert中
+      // 这会导致如果组件的根节点被替换时（如v-if）又没有引入新的inserted钩子时，可能会导致原有的inserted钩子没有执行
+      // 这里与core/vdom/patch.js/createPatchFunction中#6513的问题是想对应的
       if (dir.def && dir.def.inserted) {
-        // 存储插入父节点时的钩子
         dirsWithInsert.push(dir);
       }
     } else {
-      // 新老指令都有，进行更新
+      // 新老指令都有，执行update钩子
       // existing directive, update
       dir.oldValue = oldDir.value; // 老节点的执行结果
       dir.oldArg = oldDir.arg; // 老节点的执行参数
       callHook(dir, "update", vnode, oldVnode); // 执行update钩子
-      // 存储指令所在组件的VNode及其子VNode全部更新后的钩子
+      // 如果有componentUpdated钩子，则存储
+      // 当指令所在组件的VNode及其子VNode全部更新后会执行
       if (dir.def && dir.def.componentUpdated) {
         dirsWithPostpatch.push(dir);
       }
     }
   }
 
-  // 执行inserted钩子处理
+  // 处理inserted钩子
   if (dirsWithInsert.length) {
-    // inserted钩子执行函数
+    // inserted钩子执行函数：遍历inserted钩子并执行
     const callInsert = () => {
       for (let i = 0; i < dirsWithInsert.length; i++) {
         callHook(dirsWithInsert[i], "inserted", vnode, oldVnode);
@@ -77,11 +84,12 @@ function _update(oldVnode, vnode) {
     };
 
     // 首次渲染，则将inserted钩子的执行函数与vnode.data.hook.insert合并
-    // 在vnode执行insert钩子时就会执行所有的inserted钩子
+    // 合并后的vnode.data.hook.insert是一个具有.fns属性的invoker函数
+    // 在vnode执行insert钩子时就会执行invoker，遍历fns上所有的inserted钩子并执行
     if (isCreate) {
       mergeVNodeHook(vnode, "insert", callInsert);
     } else {
-      // 不是初次渲染，则执行所有的inserted钩子
+      // 不是初次渲染（更新），则执行所有的inserted钩子
       callInsert();
     }
   }
@@ -158,7 +166,7 @@ function normalizeDirectives(
     dir.def = resolveAsset(vm.$options, "directives", dir.name, true);
   }
   // $flow-disable-line
-  console.log(res);
+  // console.log(res);
   return res;
 }
 
@@ -172,7 +180,7 @@ function getRawDirName(dir: VNodeDirective): string {
 
 /**
  * 执行指令的钩子
- * @param {Object} dir 指令
+ * @param {Object} dir 规范化后的指令对象
  * @param {String} hook 指令的钩子名称
  * @param {VNode} vnode 新节点
  * @param {VNode} oldVnode 老节点

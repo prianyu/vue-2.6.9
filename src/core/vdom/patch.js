@@ -1159,12 +1159,13 @@ export function createPatchFunction(backend) {
       // 是否为真实的DOM，初次渲染时，传入的oldVnode是根节点的真实DOM
       const isRealElement = isDef(oldVnode.nodeType);
       if (!isRealElement && sameVnode(oldVnode, vnode)) {
+        debugger
         // 说明是更新阶段
         // 新老节点都是vnode节点，且新老节点相同，则是更新阶段，进行新老节点的patch
         // patch existing root node
         patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly);
       } else {
-        // 说明是首次挂载阶段或者根节点被替换了的阶段（如v-if）
+        // 说明是首次挂载阶段或者根节点被替换了的阶段（如v-if, key改变等情况）
         if (isRealElement) {
           // 是真实的DOM节点，说明首次渲染
           // 说明是将vnode挂载到一个真实的DOM节点
@@ -1224,26 +1225,31 @@ export function createPatchFunction(backend) {
         );
 
         // update parent placeholder node element, recursively
-        // 如果根节点被替换（如v-if），递归遍历更新父级占位节点
-        // 递归更新父占位符节点元素
+        // 走到这里，组件的根节点已经被替换（比如v-if和key变化了）
+        // 如果当前vnode有parent属性（占位符节点）则递归遍历更新所有祖先父级占位节点
         // 执行一遍父节点的destroy、create和insert钩子
-        //@suspense
         if (isDef(vnode.parent)) {
+          // debugger
           let ancestor = vnode.parent;
           const patchable = isPatchable(vnode);
           while (ancestor) {
+            // 递归执行所有销毁钩子
             for (let i = 0; i < cbs.destroy.length; ++i) {
-              // 递归执行销毁钩子
               cbs.destroy[i](ancestor);
             }
             ancestor.elm = vnode.elm; // 更新为新的DOM节点
             if (patchable) {
+              //  执行所有的create钩子
               for (let i = 0; i < cbs.create.length; ++i) {
                 cbs.create[i](emptyNode, ancestor);
               }
               // #6513
               // invoke insert hooks that may have been merged by create hooks.
               // e.g. for directives that uses the "inserted" hook.
+              // 执行所有的insert钩子
+              // 指令的inserted的钩子会被合并到vnode.data.hook.insert中
+              // 在根节点发生变化时，可能会导致inserted钩子不执行
+              // 详情见：core/vdom/modules/directives.js/_update/mark#inserted处
               const insert = ancestor.data.hook.insert;
               if (insert.merged) {
                 // start at index 1 to avoid re-invoking component mounted hook
@@ -1252,6 +1258,7 @@ export function createPatchFunction(backend) {
                 }
               }
             } else {
+              // 根节点变化了更新ref的引用
               registerRef(ancestor);
             }
             ancestor = ancestor.parent;

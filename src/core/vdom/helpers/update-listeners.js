@@ -42,11 +42,12 @@ const normalizeEvent = cached((name: string): {
 })
 
 
-// 创建事件调用者，该调用者可以捕获错误，包括Promise错误
+// 创建事件调用者，返回一个具有fns属性的invoker函数
+// 该调用者可以捕获错误，包括Promise错误
 // 由于父组件的事件绑定回调函数是外部定义的，不能保证正确执行，所以需要做一些错误捕获
 // 真实的执行函数被放置在invoker.fns中
-export function createFnInvoker (fns: Function | Array<Function>, vm: ?Component): Function {
-  function invoker () {
+export function createFnInvoker(fns: Function | Array<Function>, vm: ?Component): Function {
+  function invoker() {
     const fns = invoker.fns // 获取回调函数
     if (Array.isArray(fns)) { // 回调函数是个数组
       const cloned = fns.slice()
@@ -66,7 +67,7 @@ export function createFnInvoker (fns: Function | Array<Function>, vm: ?Component
 
 // 更新事件监听器
 // 新事件会覆盖旧事件，同时移除旧的不需要的事件
-export function updateListeners (
+export function updateListeners(
   on: Object, // 新事件列表
   oldOn: Object, // 旧事件列表
   add: Function, // 用于添加事件
@@ -76,7 +77,7 @@ export function updateListeners (
 ) {
   let name, def, cur, old, event
   // 遍历新的事件列表
-  for (name in on) { 
+  for (name in on) {
     def = cur = on[name] // 可以是falsy|function|array<function>
     old = oldOn[name] // 旧的同名事件列表
     event = normalizeEvent(name) // 解析事件名和事件修饰符等信息
@@ -91,7 +92,7 @@ export function updateListeners (
         vm
       )
     } else if (isUndef(old)) { // 如果没有对应的旧的事件
-      if (isUndef(cur.fns)) { 
+      if (isUndef(cur.fns)) {
         // 还未创建事件调用者，会对当前的事件创建一个调用者
         // 调用者就是对回调函数进行了一个包装，将回调函数绑定在其fns属性上
         // 调用者内部则会获取这个fns执行，并捕获错误
@@ -103,11 +104,11 @@ export function updateListeners (
       }
       // 添加事件
       add(event.name, cur, event.capture, event.passive, event.params)
-    } else if (cur !== old) { 
+    } else if (cur !== old) {
       // 走到这里说明old不为空，当前只是传递了新的事件
       // old不为空说明之前已经创建过函数的调用者了
       // 将调用者中存储的事件(fns)指向新的事件
-      old.fns = cur 
+      old.fns = cur
       on[name] = old //直接使用旧的调用者
     }
   }

@@ -8,6 +8,12 @@ import { remove, isDef, isUndef, isTrue } from "shared/util";
 // 目的是让所需要执行的钩子延迟到被绑定元素相应的周期去执行
 // 比如在自定义指令中，inserted钩子处理函数，需要等待节点被插入到DOM后执行
 // 就会将inserted钩子列表合并到vnode.data.hook.insert钩子中，等待期插入后执行
+/**
+ * 
+ * @param {VNode} def 要合并钩子的vnode
+ * @param {string} hookKey 钩子名称，如insert
+ * @param {Function} hook 钩子回调函数
+ */
 export function mergeVNodeHook(def: Object, hookKey: string, hook: Function) {
   // 传入的是vnode则从vnode中提取hook，提取不到则为空对象
   if (def instanceof VNode) {
@@ -25,16 +31,18 @@ export function mergeVNodeHook(def: Object, hookKey: string, hook: Function) {
     remove(invoker.fns, wrappedHook);
   }
 
-  // 创建事件调用者
+  // 创建或修改函数调用者
+  // createFnInvoker执行后返回一个具有fns属性的调用函数invoker
+  // fns存储着所有的处理函数，调用invoker后会遍历fns，依次执行
   if (isUndef(oldHook)) {
-    // hook不存在
+    // data.hook[hookKey]不存在，则创建函数的调用者
     // no existing hook
     invoker = createFnInvoker([wrappedHook]);
   } else {
-    // hook存在
+    // // data.hook[hookKey]存在
     /* istanbul ignore if */
     if (isDef(oldHook.fns) && isTrue(oldHook.merged)) {
-      // 已经合并过
+      // 已经合并过，则修改调用者，将新的钩子处理函数压入处理队列
       // already a merged invoker
       invoker = oldHook; // 直接取合并后的调用者
       invoker.fns.push(wrappedHook); // 将新的钩子压入调用者函数执行列表
@@ -46,5 +54,5 @@ export function mergeVNodeHook(def: Object, hookKey: string, hook: Function) {
   }
 
   invoker.merged = true; // 标记未已合并
-  def[hookKey] = invoker; // 缓存创建的调用者
+  def[hookKey] = invoker; // 保存创建的调用者到data.hook[hookKey]上
 }
