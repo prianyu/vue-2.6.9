@@ -870,6 +870,8 @@ export function createPatchFunction(backend) {
     removeOnly // 特殊的标识，仅transition有用
   ) {
     // 新旧节点是同一个节点，无需比对
+    // 如`render`函数执行失败返回上一次的vnode
+    // 如`render`函数返回空节点
     if (oldVnode === vnode) {
       return;
     }
@@ -1224,6 +1226,7 @@ export function createPatchFunction(backend) {
         // update parent placeholder node element, recursively
         // 如果根节点被替换（如v-if），递归遍历更新父级占位节点
         // 递归更新父占位符节点元素
+        // 执行一遍父节点的destroy、create和insert钩子
         //@suspense
         if (isDef(vnode.parent)) {
           let ancestor = vnode.parent;
